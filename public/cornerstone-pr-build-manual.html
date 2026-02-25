@@ -609,8 +609,9 @@ function App() {
       simpleArrayEditor("GUARDRAILS","guardrails",data.guardrails),
     ),
     bestpractices: () => e("div",null,
+      e("div",{style:{fontSize:11,fontWeight:700,color:C.accent,marginBottom:8,textTransform:"uppercase"}},"Operational Best Practices"),
       data.operationalBP.map((cat,ci) =>
-        e("div",{key:ci,style:{...cardStyle,marginBottom:14}},
+        e("div",{key:"op-"+ci,style:{...cardStyle,marginBottom:14}},
           e("div",{style:{fontSize:11,fontWeight:700,color:cat.color,marginBottom:8}},cat.category),
           cat.items.map((item,ii) =>
             e("div",{key:ii,style:{marginBottom:8,padding:"8px 10px",borderRadius:6,background:C.surface}},
@@ -619,6 +620,19 @@ function App() {
             )
           ),
           e("button",{onClick:()=>addItem(`operationalBP.${ci}.items`,{label:"New item",detail:"Detail...",type:"do"}),style:addBtnStyle},"+ Add Item"),
+        )
+      ),
+      e("div",{style:{fontSize:11,fontWeight:700,color:C.purple,marginBottom:8,marginTop:20,textTransform:"uppercase"}},"Build Best Practices"),
+      data.buildBP.map((cat,ci) =>
+        e("div",{key:"bd-"+ci,style:{...cardStyle,marginBottom:14}},
+          e("div",{style:{fontSize:11,fontWeight:700,color:cat.color,marginBottom:8}},cat.category),
+          cat.items.map((item,ii) =>
+            e("div",{key:ii,style:{marginBottom:8,padding:"8px 10px",borderRadius:6,background:C.surface}},
+              e(EditorField,{label:(item.type==="do"?"✓":"×")+" Label",value:item.label,onChange:v=>upd(`buildBP.${ci}.items.${ii}.label`,v)}),
+              e(EditorField,{label:"Detail",value:item.detail,onChange:v=>upd(`buildBP.${ci}.items.${ii}.detail`,v),multi:true}),
+            )
+          ),
+          e("button",{onClick:()=>addItem(`buildBP.${ci}.items`,{label:"New item",detail:"Detail...",type:"do"}),style:addBtnStyle},"+ Add Item"),
         )
       )
     ),
@@ -715,7 +729,7 @@ function App() {
     {id:"overview",label:"Overview"},{id:"technology",label:"Technology"},
     {id:"training",label:"Training Overview"},{id:"workflows",label:"Workflows"},
     {id:"configuration",label:"Configuration"},{id:"control",label:"Control"},
-    {id:"bestpractices",label:"Best Practices"},{id:"buildpractices",label:"Build Best Practices"},
+    {id:"bestpractices",label:"Best Practices"},
   ];
 
   function navBtn(v) {
@@ -1108,19 +1122,19 @@ function App() {
 
   function bestPracticesView() {
     return e("div",{style:{animation:"slideIn 0.5s ease"}},
-      e("div",{style:{marginBottom:28}},e("h2",{style:{fontSize:22,fontWeight:600,margin:"0 0 6px"}},"Best Practices"),e("p",{style:{fontSize:13,color:C.textDim,margin:0,maxWidth:720}},"Operational guidance for running this system. Click a category, then each item for full detail.")),
-      bpView(data.operationalBP,expandedBP,setExpandedBP,expandedBPItem,setExpandedBPItem)
+      e("div",{style:{marginBottom:28}},e("h2",{style:{fontSize:22,fontWeight:600,margin:"0 0 6px"}},"Best Practices"),e("p",{style:{fontSize:13,color:C.textDim,margin:0,maxWidth:720}},"Operational and build guidance for this system. Click a category, then each item for full detail.")),
+      e("div",{style:{marginBottom:20}},
+        e("div",{style:{fontSize:13,fontWeight:600,color:C.accent,marginBottom:10,textTransform:"uppercase",letterSpacing:"0.05em"}},"Operational"),
+        bpView(data.operationalBP,expandedBP,setExpandedBP,expandedBPItem,setExpandedBPItem)
+      ),
+      e("div",{style:{marginBottom:20}},
+        e("div",{style:{fontSize:13,fontWeight:600,color:C.purple,marginBottom:10,textTransform:"uppercase",letterSpacing:"0.05em"}},"Build"),
+        bpView(data.buildBP,expandedBuildBP,setExpandedBuildBP,expandedBuildBPItem,setExpandedBuildBPItem)
+      )
     );
   }
 
-  function buildPracticesView() {
-    return e("div",{style:{animation:"slideIn 0.5s ease"}},
-      e("div",{style:{marginBottom:28}},e("h2",{style:{fontSize:22,fontWeight:600,margin:"0 0 6px"}},"Build Best Practices"),e("p",{style:{fontSize:13,color:C.textDim,margin:0,maxWidth:720}},"Guidance for building this AI and automation system from scratch. Click a category, then each item for full detail.")),
-      bpView(data.buildBP,expandedBuildBP,setExpandedBuildBP,expandedBuildBPItem,setExpandedBuildBPItem)
-    );
-  }
-
-  const viewMap={overview:overviewView,technology:technologyView,training:trainingView,workflows:workflowsView,configuration:configurationView,control:controlView,bestpractices:bestPracticesView,buildpractices:buildPracticesView};
+  const viewMap={overview:overviewView,technology:technologyView,training:trainingView,workflows:workflowsView,configuration:configurationView,control:controlView,bestpractices:bestPracticesView};
   const content=(viewMap[activeView]||overviewView)();
 
   return e("div",{style:{display:"flex",minHeight:"100vh"}},

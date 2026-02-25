@@ -307,7 +307,8 @@ function App() {
     if (!res.ok) throw new Error("DELETE " + table + " failed");
   }
   async function sbGet(table, col, val) {
-    const res = await fetch(sbUrl + "/rest/v1/" + table + "?" + col + "=eq." + val + "&order=sort_order.asc", {
+    const order = table === "build_manuals" ? "" : "&order=sort_order.asc";
+    const res = await fetch(sbUrl + "/rest/v1/" + table + "?" + col + "=eq." + val + order, {
       method: "GET", headers: {...sbHeaders(), "Accept": "application/json"},
     });
     if (!res.ok) throw new Error("GET " + table + " failed");

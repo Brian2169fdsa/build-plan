@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cornerstone — Proposal & Resume Drafting | Build Manual</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: #F8F9FB; }
+  ::-webkit-scrollbar-thumb { background: #E2E5EA; border-radius: 2px; }
+  body { font-family: 'DM Sans', 'Helvetica Neue', sans-serif; background: #FFFFFF; color: #1A1A2E; }
+  @keyframes floatUp { 0%{opacity:0;transform:translateY(0) scale(1)}10%{opacity:.2}90%{opacity:0}100%{opacity:0;transform:translateY(-800px) scale(0)} }
+  @keyframes pulseGlow { 0%,100%{box-shadow:0 0 15px rgba(74,143,214,.06)}50%{box-shadow:0 0 30px rgba(74,143,214,.18)} }
+  @keyframes slideIn { from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)} }
+  @keyframes dataFlow { 0%{background-position:0% 50%}100%{background-position:200% 50%} }
+  @keyframes pulseDot { 0%,100%{transform:scale(1);opacity:.7}50%{transform:scale(1.4);opacity:1} }
+  @keyframes fadeIn { from{opacity:0}to{opacity:1} }
+  textarea:focus, input:focus { outline: none; border-color: #4A8FD6 !important; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script>
+const e = React.createElement;
+const { useState, useEffect, useRef } = React;
+
+const C = {
+  accent:"#4A8FD6",accentDim:"rgba(74,143,214,0.07)",bg:"#FFFFFF",
+  surface:"#F8F9FB",surface2:"#F0F2F5",border:"#E2E5EA",
+  text:"#1A1A2E",textDim:"#8890A0",textMid:"#5A6070",
+  success:"#22A860",warning:"#E5A200",danger:"#E04848",
+  logo:"#2A2A3E",purple:"#7C5CFC",orange:"#E8723A",teal:"#1AA8A8",
+};
+const mono = "'JetBrains Mono', monospace";
+
+// ============ DEFAULT DATA ============
+function getDefaultData() {
+  return {
+    clientName:"Cornerstone", solutionName:"Proposal & Resume Drafting", version:"3.0",
+    stack:"Claude + Make.com", confidentialLine:"Prepared for Cornerstone General Contractors",
+    systemPromptText:`You are the Cornerstone Proposal AI. You operate under these non-negotiable rules:\n\n1. COMPLIANCE FIRST: Every output must satisfy the RFP's mandatory requirements before addressing scored criteria. If a requirement cannot be met, flag it — never fabricate compliance.\n\n2. NO INVENTED FACTS: You may only use information provided in the source documents passed to you. If information is missing, output a placeholder with the tag [NEEDS_INPUT: description] and include it in the data_gaps array.\n\n3. REQUIREMENTS vs. RECOMMENDATIONS: Clearly distinguish between what the RFP requires (shall/must) and what it recommends or scores (should/may). Label each in your output.\n\n4. STRICT SCHEMA: Always output valid JSON matching the schema provided in output_config. No extra keys, no missing required fields, no markdown in JSON string values.\n\n5. SOURCE TRANSPARENCY: For every content block you generate, include a sources_used[] array referencing the source file names that were passed to you. Never cite a source you were not given.\n\n6. WORD LIMITS: If the RFP specifies page or word limits for a section, your draft must respect them. Flag any section where the source material exceeds the limit so the reviewer can decide what to cut.\n\n7. ONE QUESTION AT A TIME: If outputs contain placeholders or missing data, surface the single most critical gap first. Do not overwhelm the user with a list of 20 questions.`,
+    scopeIn:[
+      "Kickoff + compliance intelligence: extract deliverables, limits, due dates, required forms; map to checklist and outline aligned to evaluation criteria",
+      "Reusable content retrieval: pull boilerplate + prior proposals from existing SharePoint and provide 2–3 candidate snippets with transparent origins",
+      "Draft section blocks: paste-ready, consistent headings, word-limit aware",
+      "Resume/project matching: recommend best-fit projects/resumes and flag missing data",
+      "Output packaging: Proposal Kickoff Pack + Proposal Content Pack (DOCX)",
+      "Human-in-the-loop checkpoints: Kickoff validation → Content review → Final assembly",
+    ],
+    scopeOut:[
+      "Automated InDesign layout or file generation",
+      "Estimating/pricing, schedule generation, or cost modeling",
+      "Legal/contractual/binding statements outside approved Cornerstone boilerplate",
+      "CRM integration until CRM system/access is confirmed",
+    ],
+    calloutTitle:"Connects to Existing SharePoint — No Reorganization Required",
+    calloutBody:"Boilerplate narratives, project sheets, resumes, past proposals, and corporate facts stay where they already live. The system reads from those locations directly via mapped Make.com variables.",
+    accounts:[
+      {name:"Anthropic (Claude API)",setup:"Create account at console.anthropic.com. Generate API key. Fund ~$50 initial credits.",connection:"HTTP module with API key in headers",icon:"🧠",color:C.purple},
+      {name:"Make.com",setup:"Core plan ($10.99/mo). 10,000 operations. Assign to Cornerstone team workspace.",connection:"Orchestration platform — no separate connection needed",icon:"⚙️",color:C.accent},
+      {name:"Microsoft SharePoint",setup:"Confirm existing M365 instance. Identify Document Library for proposal content, templates, past proposals.",connection:"SharePoint app → service account with read/write access",icon:"📂",color:C.teal},
+      {name:"Microsoft Teams",setup:"Identify or create Proposal & Resume Drafting notification channel.",connection:"Teams app → service account or bot account",icon:"💬",color:C.purple},
+      {name:"CloudConvert",setup:"Create account at cloudconvert.com. Free tier ~25 conversions/day. Generate API key.",connection:"CloudConvert app → API key",icon:"🔄",color:C.orange},
+      {name:"Plumsail Documents",setup:"Make.com app for DOCX template merge. Alternative: DocuGenerate.",connection:"Plumsail app → API key",icon:"📄",color:C.success},
+    ],
+    spFolders:[
+      {content:"Boilerplate narratives",find:"Pre-approved text blocks (company overview, safety, staffing, scheduling, quality, etc.)",variable:"PR_BOILERPLATE_PATH",color:C.accent},
+      {content:"Project sheets",find:"Project info (scope, sector, delivery method, references)",variable:"PR_PROJECTS_PATH",color:C.purple},
+      {content:"Staff resumes",find:"Staff resumes (role, certifications, sector experience)",variable:"PR_RESUMES_PATH",color:C.teal},
+      {content:"Past proposals",find:"Previously submitted proposals (labeled by pursuit and outcome)",variable:"PR_PAST_PROPOSALS_PATH",color:C.success},
+      {content:"Corporate facts",find:"Insurance certs, bonding capacity, NAICS, DUNS, org chart, etc.",variable:"PR_CORPORATE_FACTS_PATH",color:C.orange},
+      {content:"Pursuit workspaces",find:"Where active pursuit folders will be created",variable:"PR_PURSUITS_ROOT",color:C.warning},
+    ],
+    trainingRows:[
+      {num:1,name:"Create Pursuit Workspace",type:"Workflow",tools:"SharePoint, Make.com",trigger:"New folder created in /Pursuits/",inputs:"New pursuit folder path from SharePoint trigger. Must include folder name and full path.",outputs:"Standardized subfolder structure (00_Admin, 01_Pursuit Intake, 02_Working Drafts, 03_Outputs, 04_Review Approvals), initialized pursuit_status.json, Teams notification sent.",typeColor:C.accent},
+      {num:2,name:"Intake Ingestion & File Normalization",type:"Workflow",tools:"CloudConvert, SharePoint, Make.com",trigger:"New file uploaded to /01_Pursuit Intake/",inputs:"Raw files (PDF, DOCX, DOC) dropped into intake folder. File name, extension, and pursuit path available from trigger.",outputs:"Normalized file names (RFP.pdf, Addendum_01.pdf, Owner_Instructions.pdf). PDF versions of any DOCX/DOC files. MISSING_RFP.txt created and Teams alert sent if RFP not found.",typeColor:C.accent},
+      {num:3,name:"Generate Kickoff Pack",type:"Workflow",tools:"Anthropic (Claude API), SharePoint, Plumsail, Make.com",trigger:"KICKOFF_START.txt created in /04_Review Approvals/",inputs:"All PDFs from /01_Pursuit Intake/ base64-encoded and passed to Claude. PR_KickoffPack JSON schema. PR_CORE_V1 system prompt.",outputs:"Kickoff_Pack_v1.json saved to /03_Outputs/. Kickoff_Pack_v1.docx merged from template. Teams notification prompting PM to review and approve.",typeColor:C.accent},
+      {num:4,name:"Kickoff Approval Gate",type:"Workflow",tools:"SharePoint, Make.com",trigger:"KICKOFF_APPROVED.txt created in /04_Review Approvals/",inputs:"Approval trigger file path and pursuit folder context. Current pursuit_status.json.",outputs:"Updated pursuit_status.json (status: KICKOFF_APPROVED). DRAFT_START.txt created in /04_Review Approvals/ to authorize content drafting. Teams notification sent.",typeColor:C.accent},
+      {num:5,name:"Content Pack — Schema & Content Model",type:"Knowledge",tools:"N/A (stored in prompt/docs)",trigger:"Before content generation — maintained centrally by the AI architect.",inputs:"Internal definitions of PR_ContentPackSection schema fields, word limit rules, sources_used[] citation logic, recommended_projects and recommended_resumes selection criteria, and data_gaps handling rules.",outputs:"A shared mental model and standardized structure the system uses when iterating through outline sections to produce consistent, compliance-aware, source-transparent section drafts.",typeColor:C.purple},
+      {num:6,name:"Generate Proposal Content Pack",type:"Workflow",tools:"Anthropic (Claude API), SharePoint, Plumsail, Make.com",trigger:"DRAFT_START.txt created in /04_Review Approvals/",inputs:"Kickoff_Pack_v1.json (proposed_outline[], evaluation_criteria[], compliance_requirements[]). Boilerplate from PR_BOILERPLATE_PATH. Past proposals from PR_PAST_PROPOSALS_PATH. Projects from PR_PROJECTS_PATH. Resumes from PR_RESUMES_PATH. PR_ContentPackSection schema. PR_CORE_V1 system prompt.",outputs:"PR_ContentPack.json saved to /03_Outputs/. Proposal_Content_Pack_v1.docx merged from template. DRAFT_REVIEW_REQUIRED.txt created. Teams notification with review instructions.",typeColor:C.accent},
+      {num:7,name:"Review Loop & Revision",type:"Workflow",tools:"Anthropic (Claude API), SharePoint, Plumsail, Make.com",trigger:"Reviewer_Edits_v1.json uploaded to /02_Working Drafts/",inputs:"Structured reviewer edits JSON (section_number, instruction, new_text per edit). Original PR_ContentPack.json. compliance_requirements[] from Kickoff Pack. PR_ChangeLog schema. PR_CORE_V1 system prompt.",outputs:"Updated Proposal_Content_Pack_v2.docx in /03_Outputs/. ChangeLog_v1_to_v2.json with compliance_impact per change. Teams notification confirming v2 is ready.",typeColor:C.accent},
+      {num:8,name:"System Prompt & Compliance Rules",type:"Instructions",tools:"Anthropic (Claude API), Make.com",trigger:"All Claude calls in PR-03, PR-05, PR-06",inputs:"PR_CORE_V1 system prompt text (7 rules: compliance first, no invented facts, requirements vs. recommendations, strict schema, source transparency, word limits, one question at a time). Applied as the system message in every HTTP module Claude call.",outputs:"Consistent compliance-first behavior across all Claude outputs. JSON matching schema exactly. Sources cited by file name only. Single data gap surfaced per run.",typeColor:C.teal},
+      {num:9,name:"Final Assembly & Handoff",type:"Workflow",tools:"SharePoint, Make.com",trigger:"DRAFT_APPROVED.txt created in /04_Review Approvals/",inputs:"Approved draft signal. All output files in /03_Outputs/ (Kickoff Pack, Content Pack, Change Logs). Current pursuit_status.json.",outputs:"All final outputs archived to /03_Outputs/Final/. pursuit_status.json updated to APPROVED. Teams notification directing team to proceed with InDesign layout (manual, out of scope Phase 1).",typeColor:C.accent},
+    ],
+    scenarios:[
+      {id:"PR-01",name:"Create Pursuit Workspace",trigger:"New folder created in /Pursuits/",purpose:"Set up standardized subfolder structure + status tracking for new pursuit",icon:"📁",modules:7,type:"auto",claude:false,details:"When someone creates a new pursuit folder in SharePoint, this scenario automatically builds the standardized subfolder structure (00_Admin, 01_Pursuit Intake, 02_Working Drafts, 03_Outputs, 04_Review Approvals), initializes pursuit_status.json, and notifies the team via Teams.",frMap:["Workspace setup","Status tracking"],moduleList:["SharePoint: Watch Folders (filter: is folder=true)","Create /00_Admin/","Create /01_Pursuit Intake/","Create /02_Working Drafts/","Create /03_Outputs/","Create /04_Review Approvals/","Create pursuit_status.json","Teams: Post Message"],template:null},
+      {id:"PR-02",name:"Intake Ingestion + File Normalization",trigger:"New file in /01_Pursuit Intake/",purpose:"Normalize file names, convert DOC/DOCX to PDF via CloudConvert, validate RFP exists",icon:"📄",modules:3,type:"auto",claude:false,details:"Normalizes uploaded files to standard names (RFP.pdf, Addendum_01.pdf, Owner_Instructions.pdf). Router splits DOC/DOCX (converted via CloudConvert) from PDFs (pass-through). Validates RFP.pdf exists — if missing, creates MISSING_RFP.txt and stops pipeline.",frMap:["File normalization","RFP validation"],moduleList:["SharePoint: Watch Files (filter: /01_Pursuit Intake/, ext: pdf/docx/doc)","Router: DOC/DOCX → CloudConvert (input: docx, output: pdf)","Router: PDF → pass-through","SharePoint: Rename/Move Files","SharePoint: Get File Metadata (check RFP.pdf)","On error: Create MISSING_RFP.txt + Teams Alert + STOP"],template:null},
+      {id:"PR-03",name:"Generate Kickoff Pack",trigger:"KICKOFF_START.txt created in /04_Review Approvals/",purpose:"Parse RFP through Claude → structured Kickoff Pack JSON + DOCX",icon:"📋",modules:7,type:"hitl",claude:true,details:"HITL gate — requires manual KICKOFF_START.txt. Lists all PDFs in /01_Pursuit Intake/, downloads and base64-encodes each, sends to Claude as document blocks alongside PR_KickoffPack schema. Claude extracts deliverables, compliance requirements, eval criteria, outline, key dates, required forms, and data gaps. Saves JSON and merges into DOCX template via Plumsail.",frMap:["Kickoff intelligence","Compliance mapping","Outline generation"],moduleList:["SharePoint: Watch Files (filter: KICKOFF_START.txt, /04_Review Approvals/)","SharePoint: List /01_Pursuit Intake/ → Iterator","SharePoint: Download each PDF","Tools: Base64 encode each PDF","HTTP: POST to Claude API (PR_KickoffPack schema)","SharePoint: Save Kickoff_Pack_v1.json to /03_Outputs/","Plumsail: Merge Kickoff_Pack_Template.docx","Teams: Notify PM to review"],template:{name:"Kickoff_Pack_Template.docx",purpose:"Populated by PR-03. Stable merge tags — no manual copy/paste.",mergeTags:["pursuit_name","rfp_source","submission_deadline","deliverables_checklist","evaluation_criteria","compliance_requirements","proposed_outline","key_dates","required_forms","data_gaps"]}},
+      {id:"PR-04",name:"HITL Checkpoint 1: Kickoff Approval",trigger:"KICKOFF_APPROVED.txt created",purpose:"Gate between kickoff and content drafting",icon:"✅",modules:3,type:"hitl",claude:false,details:"PM reviews Kickoff Pack DOCX. If satisfied, manually creates KICKOFF_APPROVED.txt. Scenario detects this file, updates pursuit_status.json to KICKOFF_APPROVED, creates DRAFT_START.txt to authorize PR-05, and notifies the team.",frMap:["Approval gate","Status tracking"],moduleList:["SharePoint: Watch Files (filter: KICKOFF_APPROVED.txt)","SharePoint: Overwrite pursuit_status.json (status: KICKOFF_APPROVED)","SharePoint: Create DRAFT_START.txt in /04_Review Approvals/","Teams: Post Message"],template:null},
+      {id:"PR-05",name:"Generate Proposal Content Pack",trigger:"DRAFT_START.txt created",purpose:"Retrieve all content assets from SharePoint, iterate per section through Claude, produce full Content Pack",icon:"📝",modules:9,type:"hitl",claude:true,details:"Downloads and parses Kickoff_Pack_v1.json. Retrieves boilerplate, past proposals, projects, and resumes from existing SharePoint folders. Iterator loops through proposed_outline[] — one Claude call per section using PR_ContentPackSection schema. Aggregator combines all sections into PR_ContentPack.json. Merges into DOCX template via Plumsail.",frMap:["Content retrieval","Section drafting","Source transparency","Resume/project matching"],moduleList:["SharePoint: Download + Parse Kickoff_Pack_v1.json","SharePoint: List + Download from PR_BOILERPLATE_PATH (2–3 matching files)","SharePoint: List + Download from PR_PAST_PROPOSALS_PATH (2–3 files)","SharePoint: List + Download from PR_PROJECTS_PATH","SharePoint: List + Download from PR_RESUMES_PATH","Iterator: Loop proposed_outline[]","HTTP: POST to Claude API per section (PR_ContentPackSection schema)","Aggregator: Combine all sections into PR_ContentPack.json","SharePoint: Save PR_ContentPack.json to /03_Outputs/","Plumsail: Merge Proposal_Content_Pack_Template.docx","SharePoint: Create DRAFT_REVIEW_REQUIRED.txt","Teams: Notify PM"],template:{name:"Proposal_Content_Pack_Template.docx",purpose:"Populated by PR-05 and PR-06. Stable merge tags for each section block.",mergeTags:["section_title","section_content","sources_used","recommended_projects","recommended_resumes","data_gaps"]}},
+      {id:"PR-06",name:"HITL Checkpoint 2: Review Loop",trigger:"Reviewer_Edits_v1.json uploaded to /02_Working Drafts/",purpose:"AI-assisted revision with compliance context — produces v2 with change log",icon:"🔄",modules:4,type:"hitl",claude:true,details:"Reviewer creates a structured Reviewer_Edits_v1.json with section_number, instruction, and optional new_text per edit. Scenario downloads original PR_ContentPack.json + compliance_requirements[], sends both to Claude with PR_ChangeLog schema. Claude revises affected sections, outputs updated_sections[] + changes[] with compliance_impact per change. Merged into v2 DOCX.",frMap:["Review integration","Compliance-aware revision","Change tracking"],moduleList:["SharePoint: Watch Files (filter: Reviewer_Edits*.json, /02_Working Drafts/)","SharePoint: Download Reviewer_Edits_v1.json → JSON: Parse","SharePoint: Download PR_ContentPack.json","HTTP: POST to Claude API (PR_ChangeLog schema)","SharePoint: Merge updated sections into PR_ContentPack_v2.json","Plumsail: Merge Proposal_Content_Pack_v2.docx","SharePoint: Save ChangeLog_v1_to_v2.json to /03_Outputs/","Teams: Notify"],template:null},
+      {id:"PR-07",name:"HITL Checkpoint 3: Final Assembly",trigger:"DRAFT_APPROVED.txt created",purpose:"Archive all outputs — notify team to proceed to InDesign layout",icon:"🏁",modules:2,type:"hitl",claude:false,details:"Final approval gate. PM creates DRAFT_APPROVED.txt. Scenario copies all output files (Kickoff Pack JSON + DOCX, Content Pack JSON + DOCX, Change Log) to /03_Outputs/Final/. Updates pursuit_status.json to APPROVED. Notifies team to proceed with InDesign layout (manual, out of scope Phase 1).",frMap:["Archive","Handoff"],moduleList:["SharePoint: Watch Files (filter: DRAFT_APPROVED.txt)","SharePoint: Copy all /03_Outputs/ files → /03_Outputs/Final/","SharePoint: Overwrite pursuit_status.json (status: APPROVED)","Teams: Notify — proceed to InDesign"],template:null},
+    ],
+    systemPromptRules:[
+      {num:1,title:"COMPLIANCE FIRST",desc:"Every output must satisfy the RFP's mandatory requirements before addressing scored criteria. If a requirement cannot be met, flag it — never fabricate compliance.",color:C.danger},
+      {num:2,title:"NO INVENTED FACTS",desc:"Only use information from source documents passed to you. If missing, output placeholder with [NEEDS_INPUT: description] and include in data_gaps array.",color:C.warning},
+      {num:3,title:"REQUIREMENTS vs. RECOMMENDATIONS",desc:"Clearly distinguish between what the RFP requires (shall/must) and what it recommends or scores (should/may). Label each in output.",color:C.accent},
+      {num:4,title:"STRICT SCHEMA",desc:"Always output valid JSON matching the schema provided in output_config. No extra keys, no missing required fields, no markdown in JSON string values.",color:C.textMid},
+      {num:5,title:"SOURCE TRANSPARENCY",desc:"For every content block, include sources_used[] referencing source file names passed to you. Never cite a source you were not given.",color:C.success},
+      {num:6,title:"WORD LIMITS",desc:"If the RFP specifies page or word limits for a section, your draft must respect them. Flag any section where source material exceeds the limit.",color:C.purple},
+      {num:7,title:"ONE QUESTION AT A TIME",desc:"If outputs contain placeholders or missing data, surface the single most critical gap first. Do not overwhelm the user with a list of 20 questions.",color:C.teal},
+    ],
+    jsonSchemas:[
+      {name:"PR_KickoffPack",fields:10,used:"PR-03",desc:"RFP parsing → deliverables, compliance, eval criteria, outline, dates, forms, data gaps",arrays:["deliverables_checklist","evaluation_criteria","compliance_requirements","proposed_outline","key_dates","required_forms","data_gaps"]},
+      {name:"PR_ContentPackSection",fields:7,used:"PR-05",desc:"Per-section draft with content, word count, sources, project/resume recommendations",arrays:["sources_used","recommended_projects","recommended_resumes","data_gaps"]},
+      {name:"PR_ChangeLog",fields:4,used:"PR-06",desc:"Revision tracking with compliance impact assessment per change",arrays:["changes","updated_sections","new_data_gaps"]},
+    ],
+    makeVars:[
+      {name:"PR_CLAUDE_MODEL",purpose:"Claude model identifier",example:"claude-sonnet-4-5-20250929"},
+      {name:"PR_ANTHROPIC_KEY",purpose:"Anthropic API key",example:"sk-ant-..."},
+      {name:"PR_SHAREPOINT_SITE",purpose:"SharePoint site URL",example:"yourcompany.sharepoint.com/sites/proposals"},
+      {name:"PR_PURSUITS_ROOT",purpose:"Root path to pursuit workspaces",example:"/Documents/Pursuits"},
+      {name:"PR_TEMPLATES_PATH",purpose:"Path to Kickoff + Content Pack templates",example:"/Documents/Templates"},
+      {name:"PR_BOILERPLATE_PATH",purpose:"Path to boilerplate narratives",example:"/Documents/Boilerplate"},
+      {name:"PR_PROJECTS_PATH",purpose:"Path to project sheets",example:"/Documents/Projects"},
+      {name:"PR_RESUMES_PATH",purpose:"Path to staff resumes",example:"/Documents/Resumes"},
+      {name:"PR_PAST_PROPOSALS_PATH",purpose:"Path to past submitted proposals",example:"/Documents/Past_Proposals"},
+      {name:"PR_CORPORATE_FACTS_PATH",purpose:"Path to corporate facts folder",example:"/Documents/Corporate_Facts"},
+      {name:"PR_TEAMS_CHANNEL",purpose:"Teams channel for notifications",example:"Proposals"},
+    ],
+    conditionalLogic:[
+      {scenario:"PR-02",condition:"File extension is DOC or DOCX",action:"Route to CloudConvert conversion branch. After conversion, upload PDF alongside original.",elseAction:"Pass PDF through directly to rename step. No conversion needed.",color:C.orange},
+      {scenario:"PR-02",condition:"RFP.pdf not found after rename batch completes",action:"Create /00_Admin/MISSING_RFP.txt. Post Teams alert. STOP — do not continue to kickoff.",elseAction:"Continue. All downstream scenarios depend on RFP.pdf existing.",color:C.danger},
+      {scenario:"PR-03",condition:"Addendum_01.pdf (or Addendum_02.pdf etc.) exists in /01_Pursuit Intake/",action:"Include as additional document block in Claude API call alongside RFP.pdf.",elseAction:"Send only RFP.pdf and Owner_Instructions.pdf (if present).",color:C.accent},
+      {scenario:"PR-05",condition:"Boilerplate file name contains section keyword (e.g. 'safety', 'overview', 'staffing')",action:"Include this file in the source material bundle for matching section's Claude call.",elseAction:"Skip file for this section. Include in a different section's call if relevant.",color:C.purple},
+      {scenario:"PR-05",condition:"data_gaps[] array in any section output is not empty",action:"Create /04_Review Approvals/NEEDS_INPUT.txt with first gap only. Notify PM with single question.",elseAction:"Continue aggregation without creating NEEDS_INPUT.txt.",color:C.warning},
+      {scenario:"PR-06",condition:"Reviewer edit includes new_text (not empty string)",action:"Pass new_text to Claude as replacement candidate alongside the instruction.",elseAction:"Pass instruction only. Claude generates replacement text from source material.",color:C.teal},
+      {scenario:"All scenarios",condition:"Claude HTTP call returns non-200 status, timeout, or malformed JSON",action:"Route to error handler. Write /00_Admin/ERROR_<scenario>.txt. Post Teams alert. Do not continue.",elseAction:"Parse response and continue to next module.",color:C.danger},
+    ],
+    errorHandling:[
+      {trigger:"Claude HTTP call fails (non-200 / timeout)",response:"Route to Make.com error handler. Write /00_Admin/ERROR_<scenario>.txt. Notify via Teams.",severity:"danger"},
+      {trigger:"Malformed JSON from Claude",response:"Retry with stricter prompt reinforcement. If second attempt fails, save raw output for manual review and notify PM.",severity:"danger"},
+      {trigger:"RFP.pdf missing from /01_Pursuit Intake/",response:"Create MISSING_RFP.txt in /00_Admin/. Notify team. STOP — do not proceed to kickoff without RFP.",severity:"danger"},
+      {trigger:"data_gaps[] not empty in Claude output",response:"Create NEEDS_INPUT.txt with first gap only. Notify PM with single question. Never surface all gaps at once.",severity:"warning"},
+      {trigger:"CloudConvert conversion failure",response:"Retry once. If persistent, save DOCX and notify PM to convert manually.",severity:"warning"},
+      {trigger:"SharePoint permission error on any module",response:"Write error to /00_Admin/. Notify admin. Verify service account has read/write on all required libraries.",severity:"danger"},
+    ],
+    guardrails:[
+      "Never submit AI-generated proposal content without PM review and HITL gate approval",
+      "Never let Claude modify or generate Terms & Conditions — these are template-governed",
+      "Never invent missing scope, compliance language, or commercial terms — flag with [NEEDS_INPUT]",
+      "Never store API keys in scenario module fields — use Make.com team variables only",
+      "Never process ITAR, CUI, or classified RFP materials through this pipeline",
+      "Do not pass unreviewed PII from staff resumes to Claude without data handling policy review",
+    ],
+    operationalBP:[
+      {category:"Proposal Workflow",icon:"📝",color:C.accent,items:[
+        {label:"Always run PR-01 before uploading any RFP",detail:"The workspace subfolder structure must exist before any other scenario can write files. Skipping PR-01 will cause path errors in downstream scenarios.",type:"do"},
+        {label:"Upload RFP + all addenda before triggering kickoff",detail:"PR-03 downloads everything from /01_Pursuit Intake/ at trigger time. Documents uploaded after kickoff starts will be missed. Verify the intake folder is complete before creating KICKOFF_START.txt.",type:"do"},
+        {label:"Don't skip the HITL approval gates",detail:"Even if kickoff output looks clean, human sign-off is required before drafting begins. The gate exists to catch RFP interpretation errors before you spend tokens generating content.",type:"dont"},
+        {label:"Don't let Claude draft final legal language",detail:"Compliance requirements extracted by Claude are for drafting guidance only. Final legal and contractual language must come from approved Cornerstone boilerplate.",type:"dont"},
+      ]},
+      {category:"Content Quality",icon:"📊",color:C.purple,items:[
+        {label:"Validate boilerplate folder naming conventions before go-live",detail:"The quality of PR-05 content retrieval depends entirely on how well boilerplate files are named by topic (e.g., Safety_Narrative.docx). Map naming conventions during discovery.",type:"do"},
+        {label:"Seed at least 2–3 past proposals before piloting",detail:"Claude uses past proposals as language reference for section drafting. Without sufficient examples, section quality will be generic.",type:"do"},
+        {label:"Track which data_gaps[] are surfaced most often",detail:"Recurring gaps signal that boilerplate or corporate facts folders are missing common content. Use the first month of runs to fill persistent gaps.",type:"do"},
+        {label:"Don't ignore [NEEDS_INPUT] tags in outputs",detail:"These are compliance-critical fields Claude could not populate. Every tag requires a PM decision before finalizing.",type:"dont"},
+      ]},
+      {category:"Compliance & Governance",icon:"🛡️",color:C.danger,items:[
+        {label:"Maintain an audit trail for all AI-generated outputs",detail:"Every Claude output includes sources_used[] and generation timestamps. Archive Kickoff_Pack.json and PR_ContentPack.json as part of the pursuit record.",type:"do"},
+        {label:"Review compliance_requirements[] against prime contract",detail:"Claude extracts compliance requirements from the RFP. Always cross-reference against the prime/owner contract before submitting.",type:"do"},
+        {label:"Don't submit AI-generated content without PM review",detail:"No output from this system should go to an owner or evaluator without a PM having reviewed and approved the DOCX. The HITL gates are non-negotiable.",type:"dont"},
+        {label:"Don't process ITAR, CUI, or classified materials through this pipeline",detail:"This system is not configured for controlled unclassified information or export-controlled data.",type:"dont"},
+      ]},
+      {category:"Regulatory & Permissions",icon:"📜",color:C.warning,items:[
+        {label:"Confirm SharePoint permissions before each new pursuit",detail:"If permissions are restricted per project in Cornerstone's M365 environment, the service account may need access granted per pursuit folder.",type:"do"},
+        {label:"Review data residency requirements before connecting SharePoint",detail:"If M365 tenant has data residency restrictions (GCC, GCC High, or sovereign cloud), confirm Make.com's SharePoint connector operates within those boundaries.",type:"do"},
+        {label:"Check procurement regulations before submitting AI-assisted proposals",detail:"Some federal, state, or local procurement authorities require disclosure of AI-assisted proposal preparation. Confirm for each pursuit, especially public sector work.",type:"do"},
+        {label:"Don't pass unreviewed PII to Claude without a data handling policy",detail:"Staff resumes passed to Claude may contain PII. Review your organization's AI data handling policy and Anthropic's data usage terms before enabling resume ingestion.",type:"dont"},
+      ]},
+    ],
+    buildBP:[
+      {category:"Prompt Architecture",icon:"🧠",color:C.purple,items:[
+        {label:"Always version your system prompt",detail:"Name your prompt PR_CORE_V1, PR_CORE_V2, etc. Store the text in a Make.com data store or variable. When you update it, increment the version number so you can roll back if output quality drops.",type:"do"},
+        {label:"Separate the system prompt from the user message",detail:"The system prompt sets the rules and persona (PR_CORE_V1). The user message contains the task, schema, and source documents. Never mix them. This keeps Claude's behavior predictable across all calls.",type:"do"},
+        {label:"Pass source documents as document blocks — not raw text",detail:"For PDFs, base64-encode and send as {type: 'document', source: {type: 'base64', media_type: 'application/pdf', data: ...}}. Claude reads PDFs natively and maintains better citation accuracy than text extraction.",type:"do"},
+        {label:"Don't prompt for multiple output formats in one call",detail:"If you need both a summary and a full JSON output, make two calls. Mixing format requirements in a single prompt degrades schema compliance and increases malformed JSON risk.",type:"dont"},
+        {label:"Don't ask Claude to infer missing information silently",detail:"Always instruct Claude explicitly: 'If information is missing, output [NEEDS_INPUT: description] and add to data_gaps[]. Never infer or fabricate.' This is what prevents hallucinated compliance language.",type:"dont"},
+      ]},
+      {category:"Model Selection",icon:"📊",color:C.accent,items:[
+        {label:"Use Claude Sonnet for all production calls in this build",detail:"Claude Sonnet (claude-sonnet-4-5-20250929 or latest approved) provides the optimal balance of output quality, schema compliance, and cost for proposal drafting at this volume.",type:"do"},
+        {label:"Store the model string as a Make.com variable (PR_CLAUDE_MODEL)",detail:"Never hardcode the model string in HTTP module bodies. Using a variable lets you update the model across all 7 scenarios in one place when a new version is approved.",type:"do"},
+        {label:"Set max_tokens deliberately per call type",detail:"PR-03 kickoff: 4000 tokens. PR-05 per-section drafts: 3000 tokens. PR-06 revision: 4000 tokens. Setting max_tokens too low truncates JSON output. Too high wastes budget.",type:"do"},
+        {label:"Don't use streaming for Make.com HTTP module calls",detail:"Make.com's HTTP module does not support streaming responses. Set stream: false (or omit — false is default). Streaming will cause the module to fail or return incomplete JSON.",type:"dont"},
+      ]},
+      {category:"Schema & Structured Outputs",icon:"📋",color:C.teal,items:[
+        {label:"Always use json_schema output_config for production calls",detail:"Set output_config: {format: {type: 'json_schema', schema: <your schema>}} on every Claude call that needs structured data. This enforces schema compliance at the API level.",type:"do"},
+        {label:"Set strict: true in every schema definition",detail:"strict: true forces Claude to match the schema exactly — no extra keys, no missing required fields. This is what makes DOCX merge deterministic.",type:"do"},
+        {label:"Test schemas with edge-case RFPs before go-live",detail:"Run PR-03 on 3–5 real RFPs with varying formats (short, long, poorly structured) to validate that PR_KickoffPack schema handles all cases.",type:"do"},
+        {label:"Don't mix Claude citations with json_schema",detail:"Claude's built-in citation feature (cite_sources) is incompatible with json_schema structured outputs. This system implements source transparency via sources_used[] arrays in the schema instead.",type:"dont"},
+        {label:"Don't use markdown in JSON string values",detail:"Explicitly instruct Claude in PR_CORE_V1: 'No markdown in JSON string values.' Markdown inside JSON strings breaks Plumsail template merge.",type:"dont"},
+      ]},
+      {category:"Make.com Build Patterns",icon:"⚙️",color:C.orange,items:[
+        {label:"Build and test each scenario independently before chaining",detail:"PR-01 through PR-07 form a chain. Validate each scenario in isolation with a test pursuit before enabling the full pipeline.",type:"do"},
+        {label:"Use the Iterator + Aggregator pattern for PR-05 section loop",detail:"Flow Control → Iterator over proposed_outline[] array. One HTTP → Claude call per iteration. Tools → Array Aggregator to combine all section outputs.",type:"do"},
+        {label:"Add error handler routes to every HTTP module",detail:"In Make.com, click the HTTP module → Add error handler route. Route to: write ERROR_<scenario>.txt, post Teams alert, stop execution.",type:"do"},
+        {label:"Don't hardcode folder paths — use {{PR_PURSUITS_ROOT}} and derived paths",detail:"Every folder path in every module should derive from the trigger's folder path or a Make.com variable. Hardcoded paths break when pursuit names change.",type:"dont"},
+        {label:"Don't store credentials in module fields",detail:"API keys, site URLs, and folder paths entered directly in module fields are visible to anyone with Make.com team access. Store everything as team-level variables.",type:"dont"},
+      ]},
+    ],
+  };
+}
+
+// ============ EDITOR HELPERS ============
+function EditorField({label, value, onChange, multi, mono: isMono}) {
+  const base = {width:"100%",padding:"7px 10px",borderRadius:6,border:"1px solid "+C.border,background:C.bg,color:C.text,fontSize:12,fontFamily:"'DM Sans', sans-serif"};
+  const style = {...base, ...(isMono ? {fontFamily:mono,fontSize:11} : {}), ...(multi ? {resize:"vertical",minHeight:54} : {})};
+  return e("div",{style:{marginBottom:8}},
+    e("label",{style:{fontSize:9,fontWeight:600,color:C.textDim,letterSpacing:"0.05em",display:"block",marginBottom:3,textTransform:"uppercase"}},label),
+    multi ? e("textarea",{value:value||"",onChange:ev=>onChange(ev.target.value),style}) : e("input",{type:"text",value:value||"",onChange:ev=>onChange(ev.target.value),style})
+  );
+}
+
+// ============ MAIN APP ============
+function App() {
+  const [data, setData] = useState(getDefaultData());
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [editSection, setEditSection] = useState("overview");
+  const [activeView, setActiveView] = useState("overview");
+  const [animPhase, setAnimPhase] = useState(0);
+  const [expandedScenario, setExpandedScenario] = useState(null);
+  const [expandedBP, setExpandedBP] = useState({});
+  const [expandedBPItem, setExpandedBPItem] = useState({});
+  const [expandedBuildBP, setExpandedBuildBP] = useState({});
+  const [expandedBuildBPItem, setExpandedBuildBPItem] = useState({});
+  const [promptOpen, setPromptOpen] = useState(false);
+  const [promptCopied, setPromptCopied] = useState(false);
+  const [saveStatus, setSaveStatus] = useState(null); // null | 'saving' | 'saved' | 'error'
+
+  useEffect(() => {
+    const i = setInterval(() => setAnimPhase(p => (p+1) % 7), 2200);
+    return () => clearInterval(i);
+  }, []);
+
+  // ---- DATA UPDATERS ----
+  function upd(path, value) {
+    setData(prev => {
+      const next = JSON.parse(JSON.stringify(prev));
+      const keys = path.split(".");
+      let obj = next;
+      for (let i = 0; i < keys.length - 1; i++) {
+        const k = /^\d+$/.test(keys[i]) ? parseInt(keys[i]) : keys[i];
+        obj = obj[k];
+      }
+      const last = /^\d+$/.test(keys[keys.length-1]) ? parseInt(keys[keys.length-1]) : keys[keys.length-1];
+      obj[last] = value;
+      return next;
+    });
+  }
+  function addItem(path, template) {
+    setData(prev => {
+      const next = JSON.parse(JSON.stringify(prev));
+      const keys = path.split(".");
+      let obj = next;
+      for (let i = 0; i < keys.length; i++) {
+        const k = /^\d+$/.test(keys[i]) ? parseInt(keys[i]) : keys[i];
+        obj = obj[k];
+      }
+      obj.push(JSON.parse(JSON.stringify(template)));
+      return next;
+    });
+  }
+  function removeItem(path, index) {
+    setData(prev => {
+      const next = JSON.parse(JSON.stringify(prev));
+      const keys = path.split(".");
+      let obj = next;
+      for (let i = 0; i < keys.length; i++) {
+        const k = /^\d+$/.test(keys[i]) ? parseInt(keys[i]) : keys[i];
+        obj = obj[k];
+      }
+      obj.splice(index, 1);
+      return next;
+    });
+  }
+
+  // ---- SAVE TO CLOUD (Supabase placeholder) ----
+  async function saveToCloud() {
+    setSaveStatus('saving');
+    try {
+      // Replace SUPABASE_URL and SUPABASE_ANON_KEY with your real values
+      const SUPABASE_URL = "https://YOUR_PROJECT.supabase.co";
+      const SUPABASE_KEY = "YOUR_ANON_KEY";
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/build_manuals`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": SUPABASE_KEY,
+          "Authorization": `Bearer ${SUPABASE_KEY}`,
+          "Prefer": "resolution=merge-duplicates",
+        },
+        body: JSON.stringify({
+          id: "cornerstone-pr",
+          client: data.clientName,
+          solution: data.solutionName,
+          payload: data,
+          updated_at: new Date().toISOString(),
+        }),
+      });
+      if (!res.ok) throw new Error("Save failed");
+      setSaveStatus('saved');
+    } catch {
+      setSaveStatus('error');
+    }
+    setTimeout(() => setSaveStatus(null), 3000);
+  }
+
+  // ---- EDITOR STYLES ----
+  const cardStyle = {padding:12,borderRadius:8,background:C.bg,border:"1px solid "+C.border,marginBottom:8};
+  const rmBtnStyle = {background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:13,padding:"2px 5px",fontWeight:700};
+  const addBtnStyle = {width:"100%",padding:"7px",borderRadius:6,border:"1px dashed "+C.border,background:"transparent",color:C.accent,fontSize:10,cursor:"pointer",fontFamily:"'DM Sans', sans-serif",fontWeight:600,marginTop:4};
+
+  function arrayEditor(label, path, arr, fields, template) {
+    return e("div",{style:{marginBottom:14}},
+      e("div",{style:{fontSize:10,fontWeight:600,color:C.accent,marginBottom:6,letterSpacing:"0.04em"}},label),
+      arr.map((item,i) =>
+        e("div",{key:i,style:cardStyle},
+          e("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:6}},
+            e("span",{style:{fontSize:10,fontWeight:600,color:C.textMid}},"#"+(i+1)),
+            e("button",{onClick:()=>removeItem(path,i),style:rmBtnStyle},"×")
+          ),
+          fields.map(f => e(EditorField,{key:f.key,label:f.label,value:typeof item==="string"?item:item[f.key],onChange:v=>upd(path+"."+i+"."+(typeof item==="string"?"":f.key),v),multi:f.multi,mono:f.mono}))
+        )
+      ),
+      e("button",{onClick:()=>addItem(path,template),style:addBtnStyle},"+ Add")
+    );
+  }
+
+  function simpleArrayEditor(label, path, arr) {
+    return e("div",{style:{marginBottom:14}},
+      label ? e("div",{style:{fontSize:10,fontWeight:600,color:C.accent,marginBottom:6}},label) : null,
+      arr.map((item,i) =>
+        e("div",{key:i,style:{display:"flex",gap:4,marginBottom:4}},
+          e("input",{type:"text",value:item,onChange:ev=>upd(path+"."+i,ev.target.value),style:{flex:1,padding:"7px 10px",borderRadius:6,border:"1px solid "+C.border,background:C.bg,color:C.text,fontSize:12,fontFamily:"'DM Sans', sans-serif"}}),
+          e("button",{onClick:()=>removeItem(path,i),style:rmBtnStyle},"×")
+        )
+      ),
+      e("button",{onClick:()=>addItem(path,"New item"),style:addBtnStyle},"+ Add")
+    );
+  }
+
+  // ---- EDITOR PANEL SECTIONS ----
+  const editorSections = {
+    overview: () => e("div",null,
+      e(EditorField,{label:"Client Name",value:data.clientName,onChange:v=>upd("clientName",v)}),
+      e(EditorField,{label:"Solution Name",value:data.solutionName,onChange:v=>upd("solutionName",v)}),
+      e(EditorField,{label:"Version",value:data.version,onChange:v=>upd("version",v)}),
+      e(EditorField,{label:"Confidential Line",value:data.confidentialLine,onChange:v=>upd("confidentialLine",v)}),
+      e(EditorField,{label:"Callout Title",value:data.calloutTitle,onChange:v=>upd("calloutTitle",v)}),
+      e(EditorField,{label:"Callout Body",value:data.calloutBody,onChange:v=>upd("calloutBody",v),multi:true}),
+      simpleArrayEditor("IN SCOPE","scopeIn",data.scopeIn),
+      simpleArrayEditor("OUT OF SCOPE","scopeOut",data.scopeOut),
+    ),
+    technology: () => e("div",null,
+      arrayEditor("ACCOUNTS","accounts",data.accounts,[{label:"Name",key:"name"},{label:"Setup",key:"setup",multi:true},{label:"Connection",key:"connection"},{label:"Icon",key:"icon"}],{name:"New Service",setup:"Setup steps...",connection:"Connection type",icon:"🔌",color:C.textMid}),
+      arrayEditor("SHAREPOINT FOLDERS","spFolders",data.spFolders,[{label:"Content",key:"content"},{label:"What to Find",key:"find"},{label:"Variable",key:"variable",mono:true}],{content:"New folder",find:"Where to find it",variable:"PR_NEW_VAR",color:C.accent}),
+      arrayEditor("MAKE.COM VARIABLES","makeVars",data.makeVars,[{label:"Name",key:"name",mono:true},{label:"Purpose",key:"purpose"},{label:"Example",key:"example",mono:true}],{name:"PR_NEW",purpose:"Purpose",example:"value"}),
+    ),
+    training: () => e("div",null,
+      arrayEditor("TRAINING ROWS","trainingRows",data.trainingRows,[{label:"#",key:"num"},{label:"Name",key:"name"},{label:"Type",key:"type"},{label:"Tools",key:"tools"},{label:"Trigger",key:"trigger"},{label:"Inputs",key:"inputs",multi:true},{label:"Outputs",key:"outputs",multi:true}],{num:data.trainingRows.length+1,name:"New Training",type:"Workflow",tools:"Make.com",trigger:"Trigger...",inputs:"Inputs...",outputs:"Outputs...",typeColor:C.accent}),
+    ),
+    workflows: () => e("div",null,
+      data.scenarios.map((sc,i) =>
+        e("div",{key:i,style:{...cardStyle,marginBottom:12}},
+          e("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:8}},
+            e("span",{style:{fontSize:11,fontWeight:700,color:C.accent,fontFamily:mono}},sc.id),
+            e("button",{onClick:()=>removeItem("scenarios",i),style:rmBtnStyle},"×")
+          ),
+          e(EditorField,{label:"Name",value:sc.name,onChange:v=>upd(`scenarios.${i}.name`,v)}),
+          e(EditorField,{label:"Icon",value:sc.icon,onChange:v=>upd(`scenarios.${i}.icon`,v)}),
+          e(EditorField,{label:"Purpose",value:sc.purpose,onChange:v=>upd(`scenarios.${i}.purpose`,v),multi:true}),
+          e(EditorField,{label:"Trigger",value:sc.trigger,onChange:v=>upd(`scenarios.${i}.trigger`,v)}),
+          e(EditorField,{label:"Details",value:sc.details,onChange:v=>upd(`scenarios.${i}.details`,v),multi:true}),
+          e("div",{style:{fontSize:10,fontWeight:600,color:C.purple,marginBottom:4,marginTop:6}},"MODULE LIST"),
+          sc.moduleList.map((m,j) =>
+            e("div",{key:j,style:{display:"flex",gap:4,marginBottom:3}},
+              e("span",{style:{fontFamily:mono,fontSize:10,color:C.accent,padding:"6px 0",minWidth:16}},j+1),
+              e("input",{type:"text",value:m,onChange:ev=>upd(`scenarios.${i}.moduleList.${j}`,ev.target.value),style:{flex:1,padding:"5px 8px",borderRadius:5,border:"1px solid "+C.border,background:C.bg,color:C.text,fontSize:11}}),
+              e("button",{onClick:()=>removeItem(`scenarios.${i}.moduleList`,j),style:rmBtnStyle},"×")
+            )
+          ),
+          e("button",{onClick:()=>addItem(`scenarios.${i}.moduleList`,"New module"),style:{...addBtnStyle,marginTop:4}},"+ Add Module"),
+        )
+      ),
+      e("button",{onClick:()=>addItem("scenarios",{id:`PR-0${data.scenarios.length+1}`,name:"New Scenario",trigger:"Trigger...",purpose:"Purpose...",icon:"📋",modules:5,type:"hitl",claude:false,details:"Details...",frMap:[],moduleList:["Step 1"],template:null}),style:{...addBtnStyle,background:C.accentDim,border:"1px solid "+C.accent+"44"}},"+ Add Scenario"),
+    ),
+    configuration: () => e("div",null,
+      e(EditorField,{label:"System Prompt (PR_CORE_V1) — Full Text",value:data.systemPromptText,onChange:v=>upd("systemPromptText",v),multi:true}),
+      arrayEditor("SYSTEM PROMPT RULES","systemPromptRules",data.systemPromptRules,[{label:"#",key:"num"},{label:"Title",key:"title"},{label:"Description",key:"desc",multi:true}],{num:data.systemPromptRules.length+1,title:"NEW RULE",desc:"Rule description...",color:C.accent}),
+      arrayEditor("JSON SCHEMAS","jsonSchemas",data.jsonSchemas,[{label:"Name",key:"name",mono:true},{label:"Fields",key:"fields"},{label:"Used In",key:"used"},{label:"Description",key:"desc"}],{name:"NewSchema",fields:5,used:"PR-0X",desc:"Description...",arrays:[]}),
+      arrayEditor("CONDITIONAL LOGIC","conditionalLogic",data.conditionalLogic,[{label:"Scenario",key:"scenario"},{label:"Condition",key:"condition"},{label:"If True",key:"action",multi:true},{label:"If False",key:"elseAction",multi:true}],{scenario:"PR-0X",condition:"New condition",action:"Action...",elseAction:"Else action...",color:C.accent}),
+    ),
+    control: () => e("div",null,
+      arrayEditor("ERROR HANDLING","errorHandling",data.errorHandling,[{label:"Trigger",key:"trigger"},{label:"Response",key:"response",multi:true},{label:"Severity (warning/danger)",key:"severity"}],{trigger:"New error",response:"Response...",severity:"warning"}),
+      simpleArrayEditor("GUARDRAILS","guardrails",data.guardrails),
+    ),
+    bestpractices: () => e("div",null,
+      data.operationalBP.map((cat,ci) =>
+        e("div",{key:ci,style:{...cardStyle,marginBottom:14}},
+          e("div",{style:{fontSize:11,fontWeight:700,color:cat.color,marginBottom:8}},cat.category),
+          cat.items.map((item,ii) =>
+            e("div",{key:ii,style:{marginBottom:8,padding:"8px 10px",borderRadius:6,background:C.surface}},
+              e(EditorField,{label:(item.type==="do"?"✓":"×")+" Label",value:item.label,onChange:v=>upd(`operationalBP.${ci}.items.${ii}.label`,v)}),
+              e(EditorField,{label:"Detail",value:item.detail,onChange:v=>upd(`operationalBP.${ci}.items.${ii}.detail`,v),multi:true}),
+            )
+          ),
+          e("button",{onClick:()=>addItem(`operationalBP.${ci}.items`,{label:"New item",detail:"Detail...",type:"do"}),style:addBtnStyle},"+ Add Item"),
+        )
+      )
+    ),
+  };
+
+  const editorTabs = [
+    {id:"overview",label:"Overview",icon:"🏠"},
+    {id:"technology",label:"Technology",icon:"⚙️"},
+    {id:"training",label:"Training",icon:"📋"},
+    {id:"workflows",label:"Workflows",icon:"📊"},
+    {id:"configuration",label:"Config",icon:"🧠"},
+    {id:"control",label:"Control",icon:"🛡️"},
+    {id:"bestpractices",label:"Best Practices",icon:"✅"},
+  ];
+
+  // ---- EDITOR SLIDE-OUT PANEL ----
+  function editorPanel() {
+    return e("div",{style:{
+      position:"fixed",top:0,left:0,bottom:0,zIndex:100,
+      width: panelOpen ? 380 : 0,
+      background:C.surface,borderRight: panelOpen ? "1px solid "+C.border : "none",
+      overflow:"hidden",transition:"width 0.3s ease",
+      display:"flex",flexDirection:"column",boxShadow: panelOpen ? "4px 0 24px rgba(0,0,0,0.08)" : "none",
+    }},
+      // Header
+      e("div",{style:{padding:"16px",borderBottom:"1px solid "+C.border,background:C.bg,flexShrink:0}},
+        e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}},
+          e("div",{style:{display:"flex",alignItems:"baseline",gap:3}},
+            e("span",{style:{fontSize:15,fontWeight:700,color:C.logo}},"MANAGE"),
+            e("span",{style:{fontSize:15,fontWeight:700,color:C.accent}},"AI"),
+            e("span",{style:{fontSize:10,color:C.textDim,marginLeft:8,fontFamily:mono}},"Editor")
+          ),
+          e("button",{onClick:()=>setPanelOpen(false),style:{background:"none",border:"none",color:C.textDim,cursor:"pointer",fontSize:16,lineHeight:1,padding:"2px 6px"}},"✕")
+        ),
+        // Tab row
+        e("div",{style:{display:"flex",gap:3,flexWrap:"wrap"}},
+          editorTabs.map(t => {
+            const isA = editSection === t.id;
+            return e("button",{key:t.id,onClick:()=>{setEditSection(t.id);setActiveView(t.id==="bestpractices"?"bestpractices":t.id==="training"?"training":t.id==="workflows"?"workflows":t.id==="configuration"?"configuration":t.id==="control"?"control":t.id);},
+              style:{padding:"5px 8px",borderRadius:5,border:"1px solid "+(isA?C.accent:C.border),background:isA?C.accentDim:C.bg,color:isA?C.accent:C.textDim,fontSize:10,fontWeight:500,cursor:"pointer",fontFamily:"'DM Sans', sans-serif",display:"flex",alignItems:"center",gap:4,transition:"all 0.2s"}},
+              e("span",{style:{fontSize:11}},t.icon),t.label
+            );
+          })
+        )
+      ),
+      // Scrollable content
+      e("div",{style:{flex:1,padding:"14px 16px",overflowY:"auto"}},
+        editorSections[editSection] ? editorSections[editSection]() : null
+      ),
+      // Footer
+      e("div",{style:{padding:"12px 16px",borderTop:"1px solid "+C.border,background:C.bg,flexShrink:0,display:"flex",flexDirection:"column",gap:6}},
+        // Save to Cloud
+        e("button",{
+          onClick: saveToCloud,
+          style:{width:"100%",padding:"9px",borderRadius:6,border:"none",cursor:"pointer",
+            background: saveStatus==="saved" ? C.success : saveStatus==="error" ? C.danger : C.accent,
+            color:"#FFF",fontSize:11,fontWeight:600,fontFamily:"'DM Sans', sans-serif",
+            display:"flex",alignItems:"center",justifyContent:"center",gap:6,transition:"background 0.3s"}
+        },
+          saveStatus==="saving" ? "Saving…" : saveStatus==="saved" ? "✓ Saved to Cloud" : saveStatus==="error" ? "✗ Save Failed" : "☁ Save to Cloud"
+        ),
+        // Export JSON
+        e("button",{onClick:()=>{
+          const blob = new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a"); a.href=url;
+          a.download=data.clientName.toLowerCase().replace(/\s+/g,"-")+"-pr-build-manual.json";
+          a.click();
+        },style:{width:"100%",padding:"7px",borderRadius:6,border:"1px solid "+C.border,cursor:"pointer",background:"transparent",color:C.textMid,fontSize:10,fontWeight:500,fontFamily:"'DM Sans', sans-serif"}},"↓ Export JSON"),
+        e("button",{onClick:()=>setData(getDefaultData()),style:{width:"100%",padding:"6px",borderRadius:6,border:"1px solid "+C.border,cursor:"pointer",background:"transparent",color:C.textDim,fontSize:10,fontFamily:"'DM Sans', sans-serif"}},"Reset to Default")
+      )
+    );
+  }
+
+  // ============ NAV ============
+  const views = [
+    {id:"overview",label:"Overview"},{id:"technology",label:"Technology"},
+    {id:"training",label:"Training Overview"},{id:"workflows",label:"Workflows"},
+    {id:"configuration",label:"Configuration"},{id:"control",label:"Control"},
+    {id:"bestpractices",label:"Best Practices"},{id:"buildpractices",label:"Build Best Practices"},
+  ];
+
+  function navBtn(v) {
+    const isA = activeView===v.id;
+    return e("button",{key:v.id,onClick:()=>setActiveView(v.id),style:{padding:"8px 13px",borderRadius:6,border:"none",cursor:"pointer",fontSize:11,fontWeight:500,fontFamily:"'DM Sans', sans-serif",letterSpacing:"0.02em",transition:"all 0.3s ease",background:isA?C.accent:"transparent",color:isA?"#FFF":C.textDim}},v.label);
+  }
+
+  // ============ VIEWS ============
+  function overviewView() {
+    return e("div",{style:{animation:"slideIn 0.5s ease"}},
+      e("div",{style:{marginBottom:28}},
+        e("h2",{style:{fontSize:22,fontWeight:600,margin:"0 0 6px"}},`Proposal & Resume Drafting — System Overview`),
+        e("p",{style:{fontSize:13,color:C.textDim,margin:0,maxWidth:720,lineHeight:1.6}},"AI-assisted proposal generation for construction RFPs. Extracts compliance requirements, retrieves reusable content from Cornerstone's existing SharePoint, drafts section blocks with source transparency, and packages deliverables with human-in-the-loop at every gate.")
+      ),
+      e("div",{style:{padding:24,borderRadius:12,background:C.surface,border:"1px solid "+C.border,marginBottom:20}},
+        e("div",{style:{fontSize:12,fontWeight:600,color:C.accent,letterSpacing:"0.04em",marginBottom:18}},"PROPOSAL DRAFTING FLOW"),
+        e("div",{style:{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"center",alignItems:"center"}},
+          [{icon:"📁",label:"PR-01",sub:"Create Workspace",clr:C.border},"→",{icon:"📄",label:"PR-02",sub:"Intake + Normalize",clr:C.border},"→",{icon:"📋",label:"PR-03",sub:"Kickoff Pack",clr:C.accent},"→",{icon:"✅",label:"PR-04",sub:"HITL: Approve",clr:C.warning},"→",{icon:"📝",label:"PR-05",sub:"Content Pack",clr:C.purple},"→",{icon:"🔄",label:"PR-06",sub:"HITL: Review",clr:C.warning},"→",{icon:"🏁",label:"PR-07",sub:"Final Handoff",clr:C.success}].map((item,i)=>
+            typeof item==="string" ? e("span",{key:i,style:{color:C.textDim,fontSize:14,flexShrink:0}},item)
+            : e("div",{key:i,style:{padding:"10px 14px",borderRadius:10,background:C.bg,border:"2px solid "+item.clr,textAlign:"center",minWidth:88}},
+                e("div",{style:{fontSize:18,marginBottom:3}},item.icon),
+                e("div",{style:{fontSize:10,fontWeight:600,fontFamily:mono,color:item.clr===C.border?C.textMid:item.clr}},item.label),
+                e("div",{style:{fontSize:8,color:C.textDim,marginTop:1}},item.sub))
+          )
+        )
+      ),
+      e("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(300px, 1fr))",gap:16,marginBottom:20}},
+        e("div",{style:{padding:20,borderRadius:12,background:C.success+"06",border:"1px solid "+C.success+"20"}},
+          e("div",{style:{fontSize:11,fontWeight:600,color:C.success,letterSpacing:"0.06em",marginBottom:12,textTransform:"uppercase"}},"In Scope (Phase 1)"),
+          e("div",{style:{display:"flex",flexDirection:"column",gap:8}},data.scopeIn.map((item,i)=>e("div",{key:i,style:{display:"flex",alignItems:"flex-start",gap:8,fontSize:11,color:C.textMid,lineHeight:1.5}},e("span",{style:{color:C.success,flexShrink:0,fontWeight:700,marginTop:1}},"✓"),item)))
+        ),
+        e("div",{style:{padding:20,borderRadius:12,background:C.danger+"06",border:"1px solid "+C.danger+"20"}},
+          e("div",{style:{fontSize:11,fontWeight:600,color:C.danger,letterSpacing:"0.06em",marginBottom:12,textTransform:"uppercase"}},"Out of Scope (Phase 1)"),
+          e("div",{style:{display:"flex",flexDirection:"column",gap:8}},data.scopeOut.map((item,i)=>e("div",{key:i,style:{display:"flex",alignItems:"flex-start",gap:8,fontSize:11,color:C.textMid,lineHeight:1.5}},e("span",{style:{color:C.danger,flexShrink:0,fontWeight:700,marginTop:1}},"×"),item)))
+        )
+      ),
+      e("div",{style:{padding:"16px 20px",borderRadius:10,background:C.teal+"08",border:"1px solid "+C.teal+"22",marginBottom:16,display:"flex",alignItems:"flex-start",gap:12}},
+        e("span",{style:{fontSize:18,flexShrink:0}},"📂"),
+        e("div",null,e("div",{style:{fontSize:12,fontWeight:600,color:C.teal,marginBottom:3}},data.calloutTitle),e("div",{style:{fontSize:11,color:C.textMid,lineHeight:1.6}},data.calloutBody))
+      ),
+      e("div",{style:{padding:"16px 20px",borderRadius:10,background:C.warning+"08",border:"1px solid "+C.warning+"22",display:"flex",alignItems:"flex-start",gap:12}},
+        e("span",{style:{fontSize:18,flexShrink:0}},"⚠️"),
+        e("div",null,e("div",{style:{fontSize:12,fontWeight:600,color:C.warning,marginBottom:3}},"Citations vs. Structured Outputs"),e("div",{style:{fontSize:11,color:C.textMid,lineHeight:1.6}},"Claude citations cannot be used at the same time as Structured Outputs (json_schema). This system does NOT use Claude citations. Instead, Make.com passes source content directly to Claude and Claude outputs sources_used[] referencing file names and locations."))
+      )
+    );
+  }
+
+  function technologyView() {
+    return e("div",{style:{animation:"slideIn 0.5s ease"}},
+      e("div",{style:{marginBottom:28}},
+        e("h2",{style:{fontSize:22,fontWeight:600,margin:"0 0 6px"}},"Tools, Accounts & Access"),
+        e("p",{style:{fontSize:13,color:C.textDim,margin:0,maxWidth:720,lineHeight:1.6}},"All required platforms, connections, and access levels. No custom code required — all connections use Make.com built-in apps or HTTP modules.")
+      ),
+      e("div",{style:{padding:22,borderRadius:12,background:C.surface,border:"1px solid "+C.border,marginBottom:20}},
+        e("div",{style:{fontSize:12,fontWeight:600,color:C.accent,letterSpacing:"0.04em",marginBottom:14}},"TOOLS, ACCOUNTS & ACCESS"),
+        e("div",{style:{overflowX:"auto"}},
+          e("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:11}},
+            e("thead",null,e("tr",{style:{background:C.surface2}},
+              ["Tool / Service","Type","Setup Steps","Make.com Connection","Access Required"].map((h,i)=>e("th",{key:i,style:{padding:"10px 12px",textAlign:"left",fontSize:10,fontWeight:600,color:C.textDim,letterSpacing:"0.04em",borderBottom:"1px solid "+C.border}},h))
+            )),
+            e("tbody",null,data.accounts.map((row,ri)=>
+              e("tr",{key:ri,style:{borderBottom:"1px solid "+C.border,background:ri%2===0?C.bg:C.surface}},
+                e("td",{style:{padding:"10px 12px",verticalAlign:"top"}},e("div",{style:{display:"flex",alignItems:"center",gap:8}},e("span",{style:{fontSize:16}},row.icon),e("span",{style:{fontWeight:600}},row.name))),
+                e("td",{style:{padding:"10px 12px",verticalAlign:"top"}},e("span",{style:{padding:"2px 7px",borderRadius:4,background:(row.color||C.accent)+"12",color:row.color||C.accent,fontSize:10,fontWeight:600}},row.type||"Tool")),
+                e("td",{style:{padding:"10px 12px",verticalAlign:"top",maxWidth:220}},e("span",{style:{color:C.textMid,lineHeight:1.5,fontSize:11}},row.setup)),
+                e("td",{style:{padding:"10px 12px",verticalAlign:"top"}},e("span",{style:{fontFamily:mono,color:row.color||C.accent,fontSize:10}},row.connection)),
+                e("td",{style:{padding:"10px 12px",verticalAlign:"top"}},e("span",{style:{fontFamily:mono,color:row.color||C.accent,fontSize:10}},row.access||"API Key"))
+              )
+            ))
+          )
+        )
+      ),
+      e("div",{style:{padding:22,borderRadius:12,background:C.surface,border:"1px solid "+C.border,marginBottom:20}},
+        e("div",{style:{fontSize:12,fontWeight:600,color:C.teal,letterSpacing:"0.04em",marginBottom:14}},"SHAREPOINT FOLDER MAPPING (EXISTING LOCATIONS)"),
+        e("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+          data.spFolders.map(item=>e("div",{key:item.content,style:{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderRadius:8,background:C.bg,border:"1px solid "+C.border}},
+            e("div",{style:{width:4,height:32,borderRadius:2,background:item.color,flexShrink:0}}),
+            e("div",{style:{flex:1}},e("div",{style:{fontSize:12,fontWeight:600,marginBottom:2}},item.content),e("div",{style:{fontSize:10,color:C.textDim}},item.find)),
+            e("div",{style:{fontFamily:mono,fontSize:10,color:item.color,padding:"3px 8px",borderRadius:4,background:item.color+"0A",border:"1px solid "+item.color+"15",flexShrink:0}},item.variable)
+          ))
+        )
+      ),
+      e("div",{style:{padding:22,borderRadius:12,background:C.surface,border:"1px solid "+C.border}},
+        e("div",{style:{fontSize:12,fontWeight:600,color:C.textDim,letterSpacing:"0.04em",marginBottom:14}},"FOLDERS THE SYSTEM CREATES (PER PURSUIT)"),
+        e("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(240px, 1fr))",gap:8}},
+          [{folder:"/00_Admin/",purpose:"Status files, error logs",icon:"⚙️"},{folder:"/01_Pursuit Intake/",purpose:"RFPs, addenda, owner instructions",icon:"📄"},{folder:"/02_Working Drafts/",purpose:"Reviewer edits",icon:"📝"},{folder:"/03_Outputs/",purpose:"Kickoff Pack, Content Pack",icon:"📦"},{folder:"/04_Review Approvals/",purpose:"Trigger files for approvals",icon:"✅"}].map((item,i)=>
+            e("div",{key:i,style:{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:8,background:C.bg,border:"1px solid "+C.border}},
+              e("span",{style:{fontSize:14}},item.icon),
+              e("div",null,e("div",{style:{fontSize:11,fontWeight:600,fontFamily:mono}},item.folder),e("div",{style:{fontSize:10,color:C.textDim}},item.purpose))
+            )
+          )
+        )
+      )
+    );
+  }
+
+  function trainingView() {
+    const typeColors = {Workflow:C.accent,Knowledge:C.purple,Instructions:C.teal};
+    return e("div",{style:{animation:"slideIn 0.5s ease"}},
+      e("div",{style:{marginBottom:28}},
+        e("h2",{style:{fontSize:22,fontWeight:600,margin:"0 0 6px"}},"Training Overview"),
+        e("p",{style:{fontSize:13,color:C.textDim,margin:0,maxWidth:720,lineHeight:1.6}},"Complete training matrix. Each row defines what triggers the training, what goes in, and what comes out.")
+      ),
+      e("div",{style:{display:"flex",gap:12,marginBottom:20,flexWrap:"wrap"}},
+        Object.entries(typeColors).map(([type,color])=>e("div",{key:type,style:{display:"flex",alignItems:"center",gap:6,padding:"5px 12px",borderRadius:6,background:color+"0D",border:"1px solid "+color+"30"}},e("div",{style:{width:8,height:8,borderRadius:"50%",background:color}}),e("span",{style:{fontSize:11,fontWeight:600,color:color}},type)))
+      ),
+      e("div",{style:{borderRadius:12,border:"1px solid "+C.border,overflow:"hidden"}},
+        e("div",{style:{overflowX:"auto"}},
+          e("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:11}},
+            e("thead",null,e("tr",{style:{background:"linear-gradient(135deg,"+C.surface+","+C.surface2+")"}},
+              ["#","Training Name","Type","Tools Required","Trigger","Inputs","Outputs"].map((h,i)=>e("th",{key:i,style:{padding:"12px 14px",textAlign:"left",fontSize:10,fontWeight:700,color:C.textDim,letterSpacing:"0.06em",borderBottom:"2px solid "+C.border,whiteSpace:"nowrap"}},h))
+            )),
+            e("tbody",null,data.trainingRows.map((row,ri)=>{
+              const tc=typeColors[row.type]||C.accent;
+              return e("tr",{key:ri,style:{borderBottom:"1px solid "+C.border,background:ri%2===0?C.bg:C.surface}},
+                e("td",{style:{padding:"12px 14px",verticalAlign:"top"}},e("div",{style:{width:24,height:24,borderRadius:6,background:tc+"12",border:"1px solid "+tc+"30",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:mono,fontSize:11,fontWeight:700,color:tc}},row.num)),
+                e("td",{style:{padding:"12px 14px",verticalAlign:"top",minWidth:160}},e("span",{style:{fontSize:12,fontWeight:600}},row.name)),
+                e("td",{style:{padding:"12px 14px",verticalAlign:"top",whiteSpace:"nowrap"}},e("span",{style:{padding:"3px 8px",borderRadius:4,background:tc+"12",color:tc,fontSize:10,fontWeight:600,border:"1px solid "+tc+"25"}},row.type)),
+                e("td",{style:{padding:"12px 14px",verticalAlign:"top",minWidth:160}},e("div",{style:{display:"flex",flexDirection:"column",gap:3}},row.tools.split(", ").map((t,ti)=>e("span",{key:ti,style:{fontSize:10,fontFamily:mono,color:C.textMid}},t)))),
+                e("td",{style:{padding:"12px 14px",verticalAlign:"top",minWidth:180}},e("div",{style:{padding:"5px 9px",borderRadius:5,background:C.warning+"08",border:"1px solid "+C.warning+"20",fontSize:10,color:C.textMid,lineHeight:1.5,fontFamily:mono}},row.trigger)),
+                e("td",{style:{padding:"12px 14px",verticalAlign:"top",minWidth:200,maxWidth:260}},e("div",{style:{fontSize:11,color:C.textMid,lineHeight:1.6}},row.inputs)),
+                e("td",{style:{padding:"12px 14px",verticalAlign:"top",minWidth:200,maxWidth:260}},e("div",{style:{fontSize:11,color:C.text,lineHeight:1.6}},row.outputs))
+              );
+            }))
+          )
+        )
+      )
+    );
+  }
+
+  function workflowsView() {
+    return e("div",{style:{animation:"slideIn 0.5s ease"}},
+      e("div",{style:{marginBottom:28}},
+        e("h2",{style:{fontSize:22,fontWeight:600,margin:"0 0 6px"}},"Workflow Pipeline"),
+        e("p",{style:{fontSize:13,color:C.textDim,margin:0,maxWidth:720}},"Seven Make.com workflows. Each card shows the full module sequence, trigger, and DOCX template where applicable.")
+      ),
+      e("div",{style:{display:"flex",flexDirection:"column",gap:10}},
+        data.scenarios.map((sc,i)=>{
+          const isActive=animPhase===i; const isExpanded=expandedScenario===sc.id;
+          return e("div",{key:sc.id},
+            e("div",{onClick:()=>setExpandedScenario(isExpanded?null:sc.id),style:{padding:"16px 20px",borderRadius:12,cursor:"pointer",background:isActive?C.accentDim:C.surface,border:"1px solid "+(isActive?C.accent:C.border),transition:"all 0.4s ease",position:"relative",overflow:"hidden",animation:isActive?"pulseGlow 2.5s infinite":"none"}},
+              isActive?e("div",{style:{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,transparent,"+C.accent+",transparent)",backgroundSize:"200% 100%",animation:"dataFlow 1.5s linear infinite"}}):null,
+              e("div",{style:{display:"flex",alignItems:"center",gap:12}},
+                e("div",{style:{width:44,height:44,borderRadius:10,background:isActive?C.accent+"18":C.surface2,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0,border:"1px solid "+(isActive?C.accent+"33":C.border)}},sc.icon),
+                e("div",{style:{flex:1}},
+                  e("div",{style:{display:"flex",alignItems:"center",gap:5,flexWrap:"wrap",marginBottom:3}},
+                    e("span",{style:{fontFamily:mono,fontSize:10,color:C.accent,background:C.accentDim,padding:"2px 6px",borderRadius:4,fontWeight:600}},sc.id),
+                    e("span",{style:{fontSize:13,fontWeight:600}},sc.name),
+                    sc.type==="hitl"?e("span",{style:{fontSize:9,padding:"2px 6px",borderRadius:4,background:C.warning+"15",color:C.warning,fontWeight:600}},"HITL GATE"):null,
+                    sc.claude?e("span",{style:{fontSize:9,padding:"2px 6px",borderRadius:4,background:C.purple+"12",color:C.purple,fontWeight:600}},"CLAUDE AI"):null,
+                    sc.template?e("span",{style:{fontSize:9,padding:"2px 6px",borderRadius:4,background:C.success+"12",color:C.success,fontWeight:600}},"📄 TEMPLATE"):null
+                  ),
+                  e("div",{style:{fontSize:11,color:C.textDim,lineHeight:1.4}},sc.purpose)
+                ),
+                e("div",{style:{textAlign:"right",flexShrink:0}},e("div",{style:{fontFamily:mono,fontSize:16,fontWeight:600,color:C.accent}},sc.modules),e("div",{style:{fontSize:9,color:C.textDim,letterSpacing:"0.04em"}},"MODULES")),
+                e("div",{style:{width:8,height:8,borderRadius:"50%",flexShrink:0,background:isActive?C.success:C.border,animation:isActive?"pulseDot 1.5s infinite":"none"}}),
+                e("div",{style:{fontSize:11,color:C.textDim,marginLeft:4}},isExpanded?"▲":"▼")
+              )
+            ),
+            isExpanded?e("div",{style:{margin:"6px 0 6px 0",padding:18,borderRadius:10,background:C.surface,border:"1px solid "+C.border,animation:"slideIn 0.3s ease"}},
+              e("div",{style:{fontSize:12,color:C.textMid,lineHeight:1.6,marginBottom:14}},sc.details),
+              e("div",{style:{display:"flex",gap:16,flexWrap:"wrap",marginBottom:14}},
+                e("div",null,e("div",{style:{fontSize:10,fontWeight:600,color:C.textDim,letterSpacing:"0.04em",marginBottom:4}},"TRIGGER"),e("div",{style:{fontSize:11,fontFamily:mono,padding:"4px 8px",background:C.surface2,borderRadius:4,border:"1px solid "+C.border}},sc.trigger)),
+                sc.frMap&&sc.frMap.length>0?e("div",null,e("div",{style:{fontSize:10,fontWeight:600,color:C.textDim,letterSpacing:"0.04em",marginBottom:4}},"MAPS TO"),e("div",{style:{display:"flex",gap:4,flexWrap:"wrap"}},sc.frMap.map(fr=>e("span",{key:fr,style:{fontSize:10,padding:"3px 7px",borderRadius:4,background:C.accentDim,color:C.accent,fontWeight:500}},fr)))):null
+              ),
+              e("div",{style:{fontSize:10,fontWeight:600,color:C.textDim,letterSpacing:"0.04em",marginBottom:6}},"MODULE SEQUENCE"),
+              e("div",{style:{display:"flex",flexDirection:"column",gap:4,marginBottom:sc.template?16:0}},
+                sc.moduleList.map((m,j)=>e("div",{key:j,style:{display:"flex",alignItems:"center",gap:8}},e("span",{style:{fontFamily:mono,fontSize:9,color:C.accent,fontWeight:600,minWidth:16}},j+1),e("span",{style:{fontSize:10,padding:"4px 10px",borderRadius:4,background:C.bg,border:"1px solid "+C.border,color:C.textMid}},m)))
+              ),
+              sc.template?e("div",{style:{padding:"14px 18px",borderRadius:8,background:C.success+"06",border:"1px solid "+C.success+"20"}},
+                e("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:10}},e("span",{style:{fontSize:16}},"📄"),e("div",null,e("div",{style:{fontSize:12,fontWeight:600,color:C.success}},sc.template.name),e("div",{style:{fontSize:11,color:C.textMid}},sc.template.purpose))),
+                e("div",{style:{fontSize:10,fontWeight:600,color:C.textDim,letterSpacing:"0.04em",marginBottom:6}},"MERGE TAGS"),
+                e("div",{style:{display:"flex",gap:5,flexWrap:"wrap"}},sc.template.mergeTags.map(tag=>e("span",{key:tag,style:{fontFamily:mono,fontSize:10,padding:"3px 8px",borderRadius:4,background:C.purple+"0A",color:C.purple,border:"1px solid "+C.purple+"15"}},`{{${tag}}}`)))
+              ):null
+            ):null,
+            i<data.scenarios.length-1?e("div",{style:{display:"flex",alignItems:"center",padding:"3px 0 3px 28px"}},e("div",{style:{width:1,height:10,background:C.border,marginLeft:20}})):null
+          );
+        })
+      )
+    );
+  }
+
+  function configurationView() {
+    return e("div",{style:{animation:"slideIn 0.5s ease"}},
+      e("div",{style:{marginBottom:28}},
+        e("h2",{style:{fontSize:22,fontWeight:600,margin:"0 0 6px"}},"Configuration"),
+        e("p",{style:{fontSize:13,color:C.textDim,margin:0,maxWidth:720}},"Everything Claude. Model selection, HTTP call settings, system prompt rules, the full prompt text, conditional logic per workflow, and all JSON schemas.")
+      ),
+      e("div",{style:{padding:20,borderRadius:12,background:C.surface,border:"1px solid "+C.border,marginBottom:16}},
+        e("div",{style:{fontSize:12,fontWeight:600,color:C.accent,letterSpacing:"0.04em",marginBottom:14}},"MODEL SELECTION & HTTP SETTINGS"),
+        e("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(200px, 1fr))",gap:10,marginBottom:14}},
+          [{label:"Model",value:"claude-sonnet-4-5-20250929"},{label:"Variable",value:"{{PR_CLAUDE_MODEL}}"},{label:"Method",value:"POST"},{label:"URL",value:"api.anthropic.com/v1/messages"},{label:"anthropic-version",value:"2023-06-01"},{label:"content-type",value:"application/json"}].map(item=>
+            e("div",{key:item.label,style:{padding:"10px 14px",borderRadius:8,background:C.bg,border:"1px solid "+C.border}},
+              e("div",{style:{fontSize:10,color:C.textDim,fontWeight:500,letterSpacing:"0.04em",marginBottom:3}},item.label),
+              e("div",{style:{fontSize:12,fontFamily:mono,fontWeight:500}},item.value)
+            )
+          )
+        ),
+        e("div",{style:{padding:"10px 14px",borderRadius:8,background:C.warning+"08",border:"1px solid "+C.warning+"20",fontSize:11,color:C.textMid}},"💡 Store model string as Make.com variable PR_CLAUDE_MODEL. Update the model across all 7 workflows from one place. Never hardcode the model string inside HTTP module bodies.")
+      ),
+      e("div",{style:{padding:20,borderRadius:12,background:C.surface,border:"1px solid "+C.border,marginBottom:16}},
+        e("div",{style:{fontSize:12,fontWeight:600,color:C.accent,letterSpacing:"0.04em",marginBottom:14}},"MAX_TOKENS PER CALL TYPE"),
+        e("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(180px, 1fr))",gap:8}},
+          [{workflow:"PR-03: Kickoff Pack",tokens:"4000",reason:"Full RFP + multi-array schema output"},{workflow:"PR-05: Per-section draft",tokens:"3000",reason:"Single section content block"},{workflow:"PR-06: Revision",tokens:"4000",reason:"Multiple updated sections + change log"}].map(item=>
+            e("div",{key:item.workflow,style:{padding:"12px 14px",borderRadius:8,background:C.bg,border:"1px solid "+C.border}},
+              e("div",{style:{fontFamily:mono,fontSize:11,fontWeight:600,color:C.purple,marginBottom:4}},item.tokens+" tokens"),
+              e("div",{style:{fontSize:11,fontWeight:600,marginBottom:3}},item.workflow),
+              e("div",{style:{fontSize:10,color:C.textDim}},item.reason)
+            )
+          )
+        )
+      ),
+      e("div",{style:{fontSize:12,fontWeight:600,color:C.textDim,letterSpacing:"0.06em",marginBottom:12,textTransform:"uppercase"}},"System Prompt: PR_CORE_V1"),
+      e("div",{style:{display:"flex",flexDirection:"column",gap:8,marginBottom:16}},
+        data.systemPromptRules.map((rule,i)=>
+          e("div",{key:i,style:{display:"flex",alignItems:"flex-start",gap:14,padding:"14px 18px",borderRadius:10,background:C.surface,border:"1px solid "+C.border}},
+            e("div",{style:{width:28,height:28,borderRadius:7,flexShrink:0,background:rule.color+"12",border:"1px solid "+rule.color+"25",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:mono,fontSize:11,fontWeight:700,color:rule.color}},rule.num),
+            e("div",null,e("div",{style:{fontSize:12,fontWeight:600,marginBottom:2}},rule.title),e("div",{style:{fontSize:11,color:C.textMid,lineHeight:1.5}},rule.desc))
+          )
+        )
+      ),
+      // Prompt Dropdown
+      e("div",{style:{borderRadius:10,border:"1px solid "+C.purple+"40",overflow:"hidden",marginBottom:20}},
+        e("div",{onClick:()=>setPromptOpen(o=>!o),style:{padding:"14px 18px",cursor:"pointer",display:"flex",alignItems:"center",gap:12,background:promptOpen?C.purple+"08":C.surface,borderBottom:promptOpen?"1px solid "+C.purple+"25":"none",transition:"background 0.2s"}},
+          e("div",{style:{width:32,height:32,borderRadius:8,background:C.purple+"14",border:"1px solid "+C.purple+"30",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,flexShrink:0}},"💬"),
+          e("div",{style:{flex:1}},
+            e("div",{style:{fontSize:13,fontWeight:600,color:promptOpen?C.purple:C.text}},"PR_CORE_V1 — Full System Prompt"),
+            e("div",{style:{fontSize:11,color:C.textDim,marginTop:2}},"The exact prompt text used as the system message in every Claude call (PR-03, PR-05, PR-06)")
+          ),
+          e("div",{style:{display:"flex",alignItems:"center",gap:8}},
+            e("span",{style:{fontSize:10,padding:"2px 8px",borderRadius:4,background:C.teal+"12",color:C.teal,fontWeight:600,border:"1px solid "+C.teal+"25"}},"7 RULES"),
+            e("div",{style:{fontSize:14,color:promptOpen?C.purple:C.textDim,transition:"transform 0.2s",transform:promptOpen?"rotate(180deg)":"rotate(0deg)"}},"▼")
+          )
+        ),
+        promptOpen?e("div",{style:{background:C.bg,animation:"slideIn 0.25s ease"}},
+          e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 18px",background:C.surface2,borderBottom:"1px solid "+C.border}},
+            e("span",{style:{fontSize:10,fontFamily:mono,color:C.textDim}},"system · PR_CORE_V1 · applied as system message in all Claude HTTP module calls"),
+            e("button",{onClick:()=>{navigator.clipboard.writeText(data.systemPromptText).then(()=>{setPromptCopied(true);setTimeout(()=>setPromptCopied(false),2000);});},style:{fontSize:11,padding:"5px 12px",borderRadius:6,cursor:"pointer",fontFamily:"'DM Sans', sans-serif",fontWeight:600,transition:"all 0.2s",border:"1px solid "+(promptCopied?C.success+"60":C.border),background:promptCopied?C.success+"10":C.bg,color:promptCopied?C.success:C.textMid}},promptCopied?"✓ Copied!":"📋 Copy Prompt")
+          ),
+          e("div",{style:{padding:"18px 22px"}},
+            data.systemPromptText.split("\n\n").map((block,bi)=>{
+              const isRule=/^\d\./.test(block.trim());
+              const ruleColors=[C.danger,C.warning,C.accent,C.textMid,C.success,C.purple,C.teal];
+              if(isRule){
+                const ruleNum=parseInt(block.trim()[0])-1;
+                const color=ruleColors[ruleNum]||C.accent;
+                const colonIdx=block.indexOf(":");
+                const titleText=block.substring(0,colonIdx).trim();
+                const bodyText=block.substring(colonIdx+1).trim();
+                return e("div",{key:bi,style:{display:"flex",gap:14,padding:"12px 16px",borderRadius:8,marginBottom:8,background:color+"05",border:"1px solid "+color+"20"}},
+                  e("div",{style:{width:26,height:26,borderRadius:6,flexShrink:0,background:color+"14",border:"1px solid "+color+"30",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:mono,fontSize:11,fontWeight:700,color:color}},ruleNum+1),
+                  e("div",null,
+                    e("div",{style:{fontSize:12,fontWeight:700,color:color,marginBottom:3,letterSpacing:"0.02em"}},titleText.replace(/^\d\.\s*/,"")),
+                    e("div",{style:{fontSize:12,color:C.textMid,lineHeight:1.6,fontFamily:mono,whiteSpace:"pre-wrap"}},bodyText)
+                  )
+                );
+              }
+              return e("div",{key:bi,style:{padding:"10px 14px",borderRadius:8,background:C.surface,border:"1px solid "+C.border,marginBottom:12,fontSize:12,color:C.text,fontFamily:mono,lineHeight:1.6,fontStyle:"italic"}},block);
+            })
+          ),
+          e("div",{style:{margin:"0 18px 18px",padding:"10px 14px",borderRadius:8,background:C.warning+"08",border:"1px solid "+C.warning+"22",fontSize:11,color:C.textMid,lineHeight:1.5}},
+            e("span",{style:{fontWeight:600,color:C.warning}},"⚠️ Usage: "),
+            `Paste this verbatim as the "system" field in every HTTP module body. Store as a Make.com team variable `,
+            e("span",{style:{fontFamily:mono,fontSize:10,color:C.purple}},"PR_CORE_V1"),
+            " and reference with ",
+            e("span",{style:{fontFamily:mono,fontSize:10,color:C.purple}},"{{PR_CORE_V1}}"),
+            " to keep it consistent across all scenarios."
+          )
+        ):null
+      ),
+      // Conditional Logic
+      e("div",{style:{padding:20,borderRadius:12,background:C.surface,border:"1px solid "+C.border,marginBottom:16}},
+        e("div",{style:{fontSize:12,fontWeight:600,color:C.orange,letterSpacing:"0.04em",marginBottom:14}},"CONDITIONAL LOGIC (IF / ELSE PER WORKFLOW)"),
+        e("div",{style:{display:"flex",flexDirection:"column",gap:10}},
+          data.conditionalLogic.map((logic,i)=>
+            e("div",{key:i,style:{borderRadius:8,overflow:"hidden",border:"1px solid "+logic.color+"30"}},
+              e("div",{style:{padding:"8px 14px",background:logic.color+"08",display:"flex",alignItems:"center",gap:8,borderBottom:"1px solid "+logic.color+"20"}},
+                e("span",{style:{fontFamily:mono,fontSize:10,fontWeight:600,color:logic.color,padding:"2px 6px",borderRadius:3,background:logic.color+"12"}},logic.scenario),
+                e("span",{style:{fontSize:10,fontWeight:600,color:C.textDim,letterSpacing:"0.04em"}},"CONDITION"),
+                e("span",{style:{fontSize:11,color:C.text,fontWeight:500}},logic.condition)
+              ),
+              e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:0}},
+                e("div",{style:{padding:"10px 14px",borderRight:"1px solid "+C.border}},e("div",{style:{fontSize:9,fontWeight:700,color:C.success,letterSpacing:"0.06em",marginBottom:4}},"IF TRUE →"),e("div",{style:{fontSize:11,color:C.textMid,lineHeight:1.5}},logic.action)),
+                e("div",{style:{padding:"10px 14px"}},e("div",{style:{fontSize:9,fontWeight:700,color:C.textDim,letterSpacing:"0.06em",marginBottom:4}},"IF FALSE →"),e("div",{style:{fontSize:11,color:C.textMid,lineHeight:1.5}},logic.elseAction))
+              )
+            )
+          )
+        )
+      ),
+      // JSON Schemas
+      e("div",{style:{padding:20,borderRadius:12,background:C.surface,border:"1px solid "+C.border}},
+        e("div",{style:{fontSize:12,fontWeight:600,color:C.accent,letterSpacing:"0.04em",marginBottom:14}},"JSON SCHEMAS (STRUCTURED OUTPUTS)"),
+        e("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(260px, 1fr))",gap:10}},
+          data.jsonSchemas.map(schema=>
+            e("div",{key:schema.name,style:{padding:16,borderRadius:8,background:C.bg,border:"1px solid "+C.border}},
+              e("div",{style:{fontFamily:mono,fontSize:13,fontWeight:600,color:C.purple,marginBottom:4}},schema.name),
+              e("div",{style:{fontSize:11,color:C.textMid,marginBottom:10}},schema.desc),
+              e("div",{style:{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap"}},
+                e("span",{style:{fontSize:10,padding:"2px 6px",borderRadius:3,background:C.surface2,color:C.textDim,fontFamily:mono}},schema.fields+" fields"),
+                e("span",{style:{fontSize:10,padding:"2px 6px",borderRadius:3,background:C.accentDim,color:C.accent,fontFamily:mono}},"Used in "+schema.used)
+              ),
+              schema.arrays&&e("div",{style:{display:"flex",gap:4,flexWrap:"wrap"}},schema.arrays.map(a=>e("span",{key:a,style:{fontSize:9,padding:"2px 6px",borderRadius:3,background:C.purple+"0A",color:C.purple,fontFamily:mono}},a+"[]")))
+            )
+          )
+        )
+      )
+    );
+  }
+
+  function controlView() {
+    return e("div",{style:{animation:"slideIn 0.5s ease"}},
+      e("div",{style:{marginBottom:28}},
+        e("h2",{style:{fontSize:22,fontWeight:600,margin:"0 0 6px"}},"Control"),
+        e("p",{style:{fontSize:13,color:C.textDim,margin:0,maxWidth:720}},"Error handling, logging, status tracking, permissions, and system guardrails.")
+      ),
+      e("div",{style:{padding:20,borderRadius:12,background:C.surface,border:"1px solid "+C.border,marginBottom:16}},
+        e("div",{style:{fontSize:12,fontWeight:600,color:C.accent,letterSpacing:"0.04em",marginBottom:14}},"STATUS FILE PER WORKFLOW"),
+        e("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(160px, 1fr))",gap:6}},
+          ["PR01","PR02","PR03","PR04","PR05","PR06","PR07"].map(sc=>e("div",{key:sc,style:{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",borderRadius:6,background:C.bg,border:"1px solid "+C.border}},e("div",{style:{width:6,height:6,borderRadius:"50%",background:C.success,flexShrink:0}}),e("span",{style:{fontFamily:mono,fontSize:11,color:C.textMid}},sc+"_status.json")))
+        ),
+        e("div",{style:{marginTop:10,fontSize:11,color:C.textDim,fontFamily:mono,padding:"8px 12px",background:C.surface2,borderRadius:6}},'{"last_run_at":"<timestamp>","status":"success","last_error":null}')
+      ),
+      e("div",{style:{padding:20,borderRadius:12,background:C.surface,border:"1px solid "+C.border,marginBottom:16}},
+        e("div",{style:{fontSize:12,fontWeight:600,color:C.orange,letterSpacing:"0.04em",marginBottom:14}},"ERROR HANDLING MATRIX"),
+        e("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+          data.errorHandling.map((err,i)=>e("div",{key:i,style:{padding:"14px 16px",borderRadius:8,background:C.bg,border:"1px solid "+(err.severity==="danger"?C.danger+"30":C.warning+"30")}},
+            e("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:6}},
+              e("div",{style:{width:8,height:8,borderRadius:"50%",background:err.severity==="danger"?C.danger:C.warning,flexShrink:0}}),
+              e("span",{style:{fontSize:12,fontWeight:600}},err.trigger),
+              e("span",{style:{fontSize:9,padding:"2px 6px",borderRadius:4,background:err.severity==="danger"?C.danger+"12":C.warning+"12",color:err.severity==="danger"?C.danger:C.warning,fontWeight:600,marginLeft:"auto"}},err.severity.toUpperCase())
+            ),
+            e("div",{style:{fontSize:11,color:C.textMid,lineHeight:1.5,paddingLeft:16}},err.response)
+          ))
+        )
+      ),
+      e("div",{style:{padding:20,borderRadius:12,background:C.danger+"06",border:"1px solid "+C.danger+"20",marginBottom:16}},
+        e("div",{style:{fontSize:12,fontWeight:600,color:C.danger,letterSpacing:"0.04em",marginBottom:12}},"SYSTEM GUARDRAILS (NON-NEGOTIABLE)"),
+        e("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+          data.guardrails.map((g,i)=>e("div",{key:i,style:{display:"flex",alignItems:"flex-start",gap:8,fontSize:12,color:C.textMid,lineHeight:1.5}},e("span",{style:{color:C.danger,flexShrink:0,fontWeight:700}},"×"),g))
+        )
+      ),
+      e("div",{style:{padding:20,borderRadius:12,background:C.surface,border:"1px solid "+C.border}},
+        e("div",{style:{fontSize:12,fontWeight:600,color:C.accent,letterSpacing:"0.04em",marginBottom:14}},"PERMISSIONS & ACCESS CONTROL"),
+        e("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+          [{area:"SharePoint Document Libraries",level:"Read / Write",scope:"Service account must have explicit access to all proposal content folders, template folders, and pursuit workspaces.",icon:"📂",color:C.teal},{area:"Anthropic API",level:"API Key (secrets)",scope:"Store as PR_ANTHROPIC_KEY in Make.com team variables. Rotate key if team membership changes.",icon:"🧠",color:C.purple},{area:"Make.com Team Workspace",level:"Admin (build) / Operator (run)",scope:"Scenario builders need admin access. Daily operators only need run permissions.",icon:"⚙️",color:C.accent},{area:"CloudConvert",level:"API Key",scope:"Store as Make.com variable. Free tier: 25 conversions/day.",icon:"🔄",color:C.orange},{area:"Microsoft Teams Channel",level:"Post permissions",scope:"Bot/service account must have permission to post to the Proposals channel.",icon:"💬",color:C.purple}].map((perm,i)=>
+            e("div",{key:i,style:{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderRadius:8,background:C.bg,border:"1px solid "+C.border}},
+              e("div",{style:{width:36,height:36,borderRadius:8,background:perm.color+"12",border:"1px solid "+perm.color+"25",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}},perm.icon),
+              e("div",{style:{flex:1}},
+                e("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:2}},e("span",{style:{fontSize:12,fontWeight:600}},perm.area),e("span",{style:{fontSize:9,padding:"2px 6px",borderRadius:4,background:perm.color+"12",color:perm.color,fontWeight:600}},perm.level)),
+                e("div",{style:{fontSize:11,color:C.textDim}},perm.scope)
+              )
+            )
+          )
+        )
+      )
+    );
+  }
+
+  function bpView(bpData, expandedState, setExpandedState, expandedItemState, setExpandedItemState) {
+    return e("div",{style:{display:"flex",flexDirection:"column",gap:10}},
+      bpData.map((cat,ci)=>{
+        const catOpen=!!expandedState[ci];
+        return e("div",{key:ci,style:{borderRadius:12,border:"1px solid "+(catOpen?cat.color+"44":C.border),overflow:"hidden"}},
+          e("div",{onClick:()=>setExpandedState(p=>({...p,[ci]:!p[ci]})),style:{padding:"16px 20px",background:catOpen?cat.color+"06":C.surface,cursor:"pointer",display:"flex",alignItems:"center",gap:12}},
+            e("div",{style:{width:40,height:40,borderRadius:10,background:cat.color+"12",border:"1px solid "+cat.color+"25",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}},cat.icon),
+            e("div",{style:{flex:1}},e("div",{style:{fontSize:14,fontWeight:600,color:catOpen?cat.color:C.text}},cat.category),e("div",{style:{fontSize:11,color:C.textDim}},cat.items.filter(x=>x.type==="do").length+" do / "+cat.items.filter(x=>x.type==="dont").length+" don't")),
+            e("div",{style:{display:"flex",gap:6,alignItems:"center"}},
+              e("div",{style:{width:20,height:20,borderRadius:"50%",background:C.success+"12",border:"1px solid "+C.success+"30",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:C.success}},cat.items.filter(x=>x.type==="do").length),
+              e("div",{style:{width:20,height:20,borderRadius:"50%",background:C.danger+"12",border:"1px solid "+C.danger+"30",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:C.danger}},cat.items.filter(x=>x.type==="dont").length),
+              e("div",{style:{fontSize:14,color:catOpen?cat.color:C.textDim,marginLeft:6,transition:"transform 0.2s",transform:catOpen?"rotate(180deg)":"rotate(0deg)"}},"▼")
+            )
+          ),
+          catOpen?e("div",{style:{padding:"0 16px 16px",background:C.bg,display:"flex",flexDirection:"column",gap:6,animation:"slideIn 0.25s ease"}},
+            cat.items.map((item,ii)=>{
+              const itemKey=ci+"-"+ii; const itemOpen=!!expandedItemState[itemKey]; const isDo=item.type==="do";
+              return e("div",{key:ii,style:{borderRadius:8,border:"1px solid "+(isDo?C.success+"25":C.danger+"25"),overflow:"hidden",marginTop:ii===0?12:0}},
+                e("div",{onClick:()=>setExpandedItemState(p=>({...p,[itemKey]:!p[itemKey]})),style:{padding:"11px 14px",cursor:"pointer",display:"flex",alignItems:"center",gap:10,background:isDo?C.success+"04":C.danger+"04"}},
+                  e("div",{style:{width:22,height:22,borderRadius:6,flexShrink:0,background:isDo?C.success+"15":C.danger+"15",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:isDo?C.success:C.danger}},isDo?"✓":"×"),
+                  e("span",{style:{fontSize:12,fontWeight:500,flex:1}},item.label),
+                  e("span",{style:{fontSize:11,color:C.textDim}},itemOpen?"▲":"▼")
+                ),
+                itemOpen?e("div",{style:{padding:"10px 14px 12px 46px",background:C.bg,fontSize:12,color:C.textMid,lineHeight:1.6,borderTop:"1px solid "+C.border,animation:"fadeIn 0.2s ease"}},item.detail):null
+              );
+            })
+          ):null
+        );
+      })
+    );
+  }
+
+  function bestPracticesView() {
+    return e("div",{style:{animation:"slideIn 0.5s ease"}},
+      e("div",{style:{marginBottom:28}},e("h2",{style:{fontSize:22,fontWeight:600,margin:"0 0 6px"}},"Best Practices"),e("p",{style:{fontSize:13,color:C.textDim,margin:0,maxWidth:720}},"Operational guidance for running this system. Click a category, then each item for full detail.")),
+      bpView(data.operationalBP,expandedBP,setExpandedBP,expandedBPItem,setExpandedBPItem)
+    );
+  }
+
+  function buildPracticesView() {
+    return e("div",{style:{animation:"slideIn 0.5s ease"}},
+      e("div",{style:{marginBottom:28}},e("h2",{style:{fontSize:22,fontWeight:600,margin:"0 0 6px"}},"Build Best Practices"),e("p",{style:{fontSize:13,color:C.textDim,margin:0,maxWidth:720}},"Guidance for building this AI and automation system from scratch. Click a category, then each item for full detail.")),
+      bpView(data.buildBP,expandedBuildBP,setExpandedBuildBP,expandedBuildBPItem,setExpandedBuildBPItem)
+    );
+  }
+
+  const viewMap={overview:overviewView,technology:technologyView,training:trainingView,workflows:workflowsView,configuration:configurationView,control:controlView,bestpractices:bestPracticesView,buildpractices:buildPracticesView};
+  const content=(viewMap[activeView]||overviewView)();
+
+  return e("div",{style:{display:"flex",minHeight:"100vh"}},
+    editorPanel(),
+    // Main content shifts when panel open
+    e("div",{style:{flex:1,minHeight:"100vh",background:C.bg,position:"relative",transition:"margin-left 0.3s ease",marginLeft:panelOpen?380:0}},
+      e("div",{style:{position:"fixed",inset:0,pointerEvents:"none",zIndex:0,backgroundImage:"linear-gradient("+C.border+"33 1px, transparent 1px), linear-gradient(90deg, "+C.border+"33 1px, transparent 1px)",backgroundSize:"60px 60px"}}),
+      e("div",{style:{position:"fixed",inset:0,pointerEvents:"none",zIndex:0}},
+        Array.from({length:12},(_,i)=>e("div",{key:i,style:{position:"absolute",width:2,height:2,borderRadius:"50%",background:C.accent,opacity:0,left:(Math.random()*100)+"%",top:"100%",animation:"floatUp 10s "+(i*0.9)+"s infinite ease-out"}}))
+      ),
+      e("header",{style:{position:"relative",zIndex:10,padding:"20px 28px 16px",borderBottom:"1px solid "+C.border,background:"linear-gradient(180deg,"+C.surface+" 0%,"+C.bg+" 100%)"}},
+        e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}},
+          e("div",{style:{display:"flex",alignItems:"center",gap:12}},
+            !panelOpen?e("button",{onClick:()=>setPanelOpen(true),title:"Open Editor",style:{width:32,height:32,borderRadius:6,border:"1px solid "+C.border,background:C.surface,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,color:C.accent,flexShrink:0,transition:"all 0.2s"}},"✏️"):null,
+            e("div",{style:{display:"flex",alignItems:"baseline",gap:4}},e("span",{style:{fontSize:20,fontWeight:700,color:C.logo,letterSpacing:"-0.02em"}},"MANAGE"),e("span",{style:{fontSize:20,fontWeight:700,color:C.accent,letterSpacing:"-0.02em"}},"AI")),
+            e("div",{style:{width:1,height:20,background:C.border}}),
+            e("div",null,
+              e("div",{style:{fontSize:12,fontWeight:600}},data.clientName+" — "+data.solutionName),
+              e("div",{style:{fontSize:9,color:C.textDim,marginTop:1,fontFamily:mono}},"Build Manual v"+data.version+" · "+data.stack)
+            )
+          ),
+          e("div",{style:{display:"flex",gap:2,background:C.surface2,borderRadius:8,padding:3,border:"1px solid "+C.border,flexWrap:"wrap"}},views.map(v=>navBtn(v)))
+        )
+      ),
+      e("main",{style:{position:"relative",zIndex:5,padding:"30px 28px",maxWidth:1400,margin:"0 auto"}},content),
+      e("footer",{style:{position:"relative",zIndex:5,padding:"16px 28px",borderTop:"1px solid "+C.border,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}},
+        e("div",{style:{fontSize:11,color:C.textDim}},e("span",{style:{color:C.logo}},"MANAGE"),e("span",{style:{color:C.accent}},"AI"),e("span",{style:{marginLeft:8}},"· "+data.solutionName+" Build Manual v"+data.version+" · February 2026")),
+        e("div",{style:{fontSize:10,color:C.textDim,fontFamily:mono}},"CONFIDENTIAL — "+data.confidentialLine)
+      )
+    )
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(e(App));
+</script>
+</body>
+</html>

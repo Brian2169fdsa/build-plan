@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/manual/:slug", "destination": "/" },
+    { "source": "/manual/:slug/", "destination": "/" }
+  ]
+}

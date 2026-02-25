@@ -434,7 +434,7 @@ function App() {
           headers: {...sbHeaders(), "Accept": "application/json"},
         });
         const rows = await res.json();
-        if (!rows.length) { setLoadStatus('error'); alert("No manuals found in Supabase."); return; }
+        if (!rows.length) { setLoadStatus(null); return; }
         mid = rows[0].id;
       }
       setManualId(mid);
@@ -512,6 +512,11 @@ function App() {
     }
     setTimeout(() => setLoadStatus(null), 3000);
   }
+
+  // ---- AUTO-LOAD FROM SUPABASE ON MOUNT ----
+  useEffect(() => {
+    loadFromCloud();
+  }, []);
 
   // ---- EDITOR STYLES ----
   const cardStyle = {padding:12,borderRadius:8,background:C.bg,border:"1px solid "+C.border,marginBottom:8};

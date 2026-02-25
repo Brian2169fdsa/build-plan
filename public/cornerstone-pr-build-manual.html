@@ -232,6 +232,11 @@ function App() {
   const [promptOpen, setPromptOpen] = useState(false);
   const [promptCopied, setPromptCopied] = useState(false);
   const [saveStatus, setSaveStatus] = useState(null); // null | 'saving' | 'saved' | 'error'
+  const [loadStatus, setLoadStatus] = useState(null); // null | 'loading' | 'loaded' | 'error'
+  const [manualId, setManualId] = useState(null); // UUID of current manual in Supabase
+  const [sbUrl, setSbUrl] = useState(localStorage.getItem('sb_url') || '');
+  const [sbKey, setSbKey] = useState(localStorage.getItem('sb_key') || '');
+  const [showConfig, setShowConfig] = useState(false);
 
   useEffect(() => {
     const i = setInterval(() => setAnimPhase(p => (p+1) % 7), 2200);
@@ -280,35 +285,237 @@ function App() {
     });
   }
 
-  // ---- SAVE TO CLOUD (Supabase placeholder) ----
+  // ---- SUPABASE HELPERS ----
+  function sbHeaders() {
+    return {
+      "Content-Type": "application/json",
+      "apikey": sbKey,
+      "Authorization": "Bearer " + sbKey,
+      "Prefer": "return=representation",
+    };
+  }
+  async function sbPost(table, rows) {
+    const res = await fetch(sbUrl + "/rest/v1/" + table, {
+      method: "POST", headers: {...sbHeaders(), "Prefer": "return=representation,resolution=merge-duplicates"}, body: JSON.stringify(rows),
+    });
+    if (!res.ok) { const t = await res.text(); throw new Error("POST " + table + " failed: " + t); }
+    return res.json();
+  }
+  async function sbDelete(table, col, val) {
+    const res = await fetch(sbUrl + "/rest/v1/" + table + "?" + col + "=eq." + val, {
+      method: "DELETE", headers: sbHeaders(),
+    });
+    if (!res.ok) throw new Error("DELETE " + table + " failed");
+  }
+  async function sbGet(table, col, val) {
+    const res = await fetch(sbUrl + "/rest/v1/" + table + "?" + col + "=eq." + val + "&order=sort_order.asc", {
+      method: "GET", headers: {...sbHeaders(), "Accept": "application/json"},
+    });
+    if (!res.ok) throw new Error("GET " + table + " failed");
+    return res.json();
+  }
+
+  // ---- SAVE TO CLOUD ----
   async function saveToCloud() {
+    if (!sbUrl || !sbKey) { setShowConfig(true); return; }
+    localStorage.setItem('sb_url', sbUrl);
+    localStorage.setItem('sb_key', sbKey);
     setSaveStatus('saving');
     try {
-      // Replace SUPABASE_URL and SUPABASE_ANON_KEY with your real values
-      const SUPABASE_URL = "https://YOUR_PROJECT.supabase.co";
-      const SUPABASE_KEY = "YOUR_ANON_KEY";
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/build_manuals`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "apikey": SUPABASE_KEY,
-          "Authorization": `Bearer ${SUPABASE_KEY}`,
-          "Prefer": "resolution=merge-duplicates",
-        },
-        body: JSON.stringify({
-          id: "cornerstone-pr",
-          client: data.clientName,
-          solution: data.solutionName,
-          payload: data,
-          updated_at: new Date().toISOString(),
-        }),
-      });
-      if (!res.ok) throw new Error("Save failed");
+      // 1. Upsert build_manuals
+      const manualRow = {
+        client_name: data.clientName, solution_name: data.solutionName, version: data.version,
+        stack: data.stack, confidential_line: data.confidentialLine,
+        system_prompt_text: data.systemPromptText, callout_title: data.calloutTitle, callout_body: data.calloutBody,
+      };
+      if (manualId) manualRow.id = manualId;
+      const [saved] = await sbPost("build_manuals", [manualRow]);
+      const mid = saved.id;
+      if (!manualId) setManualId(mid);
+
+      // 2. Delete all child rows for this manual, then re-insert
+      const childTables = ["scope_items","accounts","sp_folders","training_steps","scenarios",
+        "system_prompt_rules","json_schemas","make_variables","conditional_logic","error_handling","guardrails"];
+      // For best practices: delete categories (cascade deletes items)
+      await sbDelete("best_practice_categories", "manual_id", mid);
+      for (const t of childTables) await sbDelete(t, "manual_id", mid);
+
+      // 3. Insert scope_items
+      const scopeRows = [
+        ...data.scopeIn.map((t,i) => ({manual_id:mid, scope_type:"in", text:t, sort_order:i})),
+        ...data.scopeOut.map((t,i) => ({manual_id:mid, scope_type:"out", text:t, sort_order:i})),
+      ];
+      if (scopeRows.length) await sbPost("scope_items", scopeRows);
+
+      // 4. Insert accounts
+      if (data.accounts.length) await sbPost("accounts", data.accounts.map((a,i) => ({
+        manual_id:mid, name:a.name, setup:a.setup, connection:a.connection, icon:a.icon, color:a.color, sort_order:i
+      })));
+
+      // 5. Insert sp_folders
+      if (data.spFolders.length) await sbPost("sp_folders", data.spFolders.map((f,i) => ({
+        manual_id:mid, content:f.content, find:f.find, variable:f.variable, color:f.color, sort_order:i
+      })));
+
+      // 6. Insert training_steps
+      if (data.trainingRows.length) await sbPost("training_steps", data.trainingRows.map((r,i) => ({
+        manual_id:mid, num:r.num, name:r.name, step_type:r.type, tools:r.tools,
+        trigger_desc:r.trigger, inputs:r.inputs, outputs:r.outputs, type_color:r.typeColor, sort_order:i
+      })));
+
+      // 7. Insert scenarios
+      if (data.scenarios.length) await sbPost("scenarios", data.scenarios.map((s,i) => ({
+        manual_id:mid, scenario_id:s.id, name:s.name, trigger_desc:s.trigger, purpose:s.purpose,
+        icon:s.icon, modules:s.modules, scenario_type:s.type, claude:s.claude, details:s.details,
+        fr_map:JSON.stringify(s.frMap), module_list:JSON.stringify(s.moduleList),
+        template:s.template ? JSON.stringify(s.template) : null, sort_order:i
+      })));
+
+      // 8. Insert system_prompt_rules
+      if (data.systemPromptRules.length) await sbPost("system_prompt_rules", data.systemPromptRules.map((r,i) => ({
+        manual_id:mid, num:r.num, title:r.title, description:r.desc, color:r.color, sort_order:i
+      })));
+
+      // 9. Insert json_schemas
+      if (data.jsonSchemas.length) await sbPost("json_schemas", data.jsonSchemas.map((s,i) => ({
+        manual_id:mid, name:s.name, fields:s.fields, used_in:s.used, description:s.desc,
+        arrays:JSON.stringify(s.arrays), sort_order:i
+      })));
+
+      // 10. Insert make_variables
+      if (data.makeVars.length) await sbPost("make_variables", data.makeVars.map((v,i) => ({
+        manual_id:mid, name:v.name, purpose:v.purpose, example:v.example, sort_order:i
+      })));
+
+      // 11. Insert conditional_logic
+      if (data.conditionalLogic.length) await sbPost("conditional_logic", data.conditionalLogic.map((c,i) => ({
+        manual_id:mid, scenario:c.scenario, condition:c.condition, action:c.action, else_action:c.elseAction, color:c.color, sort_order:i
+      })));
+
+      // 12. Insert error_handling
+      if (data.errorHandling.length) await sbPost("error_handling", data.errorHandling.map((e,i) => ({
+        manual_id:mid, trigger_desc:e.trigger, response:e.response, severity:e.severity, sort_order:i
+      })));
+
+      // 13. Insert guardrails
+      if (data.guardrails.length) await sbPost("guardrails", data.guardrails.map((g,i) => ({
+        manual_id:mid, text:g, sort_order:i
+      })));
+
+      // 14. Insert best_practice_categories + items
+      async function saveBP(bpArray, bpType) {
+        for (let ci = 0; ci < bpArray.length; ci++) {
+          const cat = bpArray[ci];
+          const [savedCat] = await sbPost("best_practice_categories", [{
+            manual_id:mid, bp_type:bpType, category:cat.category, icon:cat.icon, color:cat.color, sort_order:ci
+          }]);
+          if (cat.items.length) await sbPost("best_practice_items", cat.items.map((item,ii) => ({
+            category_id:savedCat.id, label:item.label, detail:item.detail, item_type:item.type, sort_order:ii
+          })));
+        }
+      }
+      await saveBP(data.operationalBP, "operational");
+      await saveBP(data.buildBP, "build");
+
       setSaveStatus('saved');
-    } catch {
+    } catch(err) {
+      console.error("Save error:", err);
       setSaveStatus('error');
     }
     setTimeout(() => setSaveStatus(null), 3000);
+  }
+
+  // ---- LOAD FROM CLOUD ----
+  async function loadFromCloud(overrideId) {
+    if (!sbUrl || !sbKey) { setShowConfig(true); return; }
+    localStorage.setItem('sb_url', sbUrl);
+    localStorage.setItem('sb_key', sbKey);
+    setLoadStatus('loading');
+    try {
+      // Find the manual — use overrideId, or manualId, or fetch the most recent
+      let mid = overrideId || manualId;
+      if (!mid) {
+        const res = await fetch(sbUrl + "/rest/v1/build_manuals?order=updated_at.desc&limit=1", {
+          headers: {...sbHeaders(), "Accept": "application/json"},
+        });
+        const rows = await res.json();
+        if (!rows.length) { setLoadStatus('error'); alert("No manuals found in Supabase."); return; }
+        mid = rows[0].id;
+      }
+      setManualId(mid);
+
+      // Fetch manual
+      const [manual] = await sbGet("build_manuals", "id", mid);
+      if (!manual) throw new Error("Manual not found");
+
+      // Fetch all children
+      const [scopeRows, acctRows, spRows, trainRows, scenRows, ruleRows, schemaRows, varRows, condRows, errRows, guardRows] = await Promise.all([
+        sbGet("scope_items", "manual_id", mid),
+        sbGet("accounts", "manual_id", mid),
+        sbGet("sp_folders", "manual_id", mid),
+        sbGet("training_steps", "manual_id", mid),
+        sbGet("scenarios", "manual_id", mid),
+        sbGet("system_prompt_rules", "manual_id", mid),
+        sbGet("json_schemas", "manual_id", mid),
+        sbGet("make_variables", "manual_id", mid),
+        sbGet("conditional_logic", "manual_id", mid),
+        sbGet("error_handling", "manual_id", mid),
+        sbGet("guardrails", "manual_id", mid),
+      ]);
+
+      // Fetch best practices
+      const bpCats = await sbGet("best_practice_categories", "manual_id", mid);
+      const opCats = bpCats.filter(c => c.bp_type === "operational");
+      const buildCats = bpCats.filter(c => c.bp_type === "build");
+
+      async function loadBPItems(cats) {
+        const result = [];
+        for (const cat of cats) {
+          const items = await sbGet("best_practice_items", "category_id", cat.id);
+          result.push({
+            category: cat.category, icon: cat.icon, color: cat.color,
+            items: items.map(i => ({label:i.label, detail:i.detail, type:i.item_type}))
+          });
+        }
+        return result;
+      }
+      const opBP = await loadBPItems(opCats);
+      const buildBP = await loadBPItems(buildCats);
+
+      // Reconstruct data object
+      const loaded = {
+        clientName: manual.client_name, solutionName: manual.solution_name, version: manual.version,
+        stack: manual.stack, confidentialLine: manual.confidential_line,
+        systemPromptText: manual.system_prompt_text, calloutTitle: manual.callout_title, calloutBody: manual.callout_body,
+        scopeIn: scopeRows.filter(r => r.scope_type === "in").map(r => r.text),
+        scopeOut: scopeRows.filter(r => r.scope_type === "out").map(r => r.text),
+        accounts: acctRows.map(a => ({name:a.name, setup:a.setup, connection:a.connection, icon:a.icon, color:a.color})),
+        spFolders: spRows.map(f => ({content:f.content, find:f.find, variable:f.variable, color:f.color})),
+        trainingRows: trainRows.map(r => ({num:r.num, name:r.name, type:r.step_type, tools:r.tools, trigger:r.trigger_desc, inputs:r.inputs, outputs:r.outputs, typeColor:r.type_color})),
+        scenarios: scenRows.map(s => ({
+          id:s.scenario_id, name:s.name, trigger:s.trigger_desc, purpose:s.purpose, icon:s.icon,
+          modules:s.modules, type:s.scenario_type, claude:s.claude, details:s.details,
+          frMap: typeof s.fr_map === "string" ? JSON.parse(s.fr_map) : s.fr_map,
+          moduleList: typeof s.module_list === "string" ? JSON.parse(s.module_list) : s.module_list,
+          template: s.template ? (typeof s.template === "string" ? JSON.parse(s.template) : s.template) : null,
+        })),
+        systemPromptRules: ruleRows.map(r => ({num:r.num, title:r.title, desc:r.description, color:r.color})),
+        jsonSchemas: schemaRows.map(s => ({name:s.name, fields:s.fields, used:s.used_in, desc:s.description, arrays: typeof s.arrays === "string" ? JSON.parse(s.arrays) : s.arrays})),
+        makeVars: varRows.map(v => ({name:v.name, purpose:v.purpose, example:v.example})),
+        conditionalLogic: condRows.map(c => ({scenario:c.scenario, condition:c.condition, action:c.action, elseAction:c.else_action, color:c.color})),
+        errorHandling: errRows.map(r => ({trigger:r.trigger_desc, response:r.response, severity:r.severity})),
+        guardrails: guardRows.map(g => g.text),
+        operationalBP: opBP,
+        buildBP: buildBP,
+      };
+
+      setData(loaded);
+      setLoadStatus('loaded');
+    } catch(err) {
+      console.error("Load error:", err);
+      setLoadStatus('error');
+    }
+    setTimeout(() => setLoadStatus(null), 3000);
   }
 
   // ---- EDITOR STYLES ----
@@ -462,6 +669,26 @@ function App() {
       ),
       // Footer
       e("div",{style:{padding:"12px 16px",borderTop:"1px solid "+C.border,background:C.bg,flexShrink:0,display:"flex",flexDirection:"column",gap:6}},
+        // Supabase Config Toggle
+        e("button",{
+          onClick:()=>setShowConfig(!showConfig),
+          style:{width:"100%",padding:"6px",borderRadius:6,border:"1px solid "+(sbUrl&&sbKey?C.success+"40":C.warning+"40"),cursor:"pointer",
+            background:sbUrl&&sbKey?C.success+"08":C.warning+"08",color:sbUrl&&sbKey?C.success:C.warning,
+            fontSize:10,fontWeight:500,fontFamily:"'DM Sans', sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:6}
+        }, sbUrl&&sbKey ? "⚡ Supabase Connected" : "⚠ Configure Supabase"),
+        // Supabase Config Panel (collapsible)
+        showConfig ? e("div",{style:{padding:10,borderRadius:8,border:"1px solid "+C.border,background:C.surface,display:"flex",flexDirection:"column",gap:6,animation:"slideIn 0.2s ease"}},
+          e("div",{style:{fontSize:9,fontWeight:600,color:C.textDim,textTransform:"uppercase",letterSpacing:"0.05em"}},"Supabase Configuration"),
+          e("input",{type:"text",placeholder:"https://xxxxx.supabase.co",value:sbUrl,
+            onChange:ev=>setSbUrl(ev.target.value),
+            style:{width:"100%",padding:"6px 8px",borderRadius:4,border:"1px solid "+C.border,background:C.bg,color:C.text,fontSize:10,fontFamily:mono}}),
+          e("input",{type:"password",placeholder:"anon key",value:sbKey,
+            onChange:ev=>setSbKey(ev.target.value),
+            style:{width:"100%",padding:"6px 8px",borderRadius:4,border:"1px solid "+C.border,background:C.bg,color:C.text,fontSize:10,fontFamily:mono}}),
+          manualId ? e("div",{style:{fontSize:9,color:C.textDim,fontFamily:mono,wordBreak:"break-all"}},"Manual ID: "+manualId) : null,
+          e("button",{onClick:()=>{localStorage.setItem('sb_url',sbUrl);localStorage.setItem('sb_key',sbKey);setShowConfig(false);},
+            style:{padding:"5px",borderRadius:4,border:"none",background:C.accent,color:"#FFF",fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans', sans-serif"}},"Save Config")
+        ) : null,
         // Save to Cloud
         e("button",{
           onClick: saveToCloud,
@@ -471,6 +698,17 @@ function App() {
             display:"flex",alignItems:"center",justifyContent:"center",gap:6,transition:"background 0.3s"}
         },
           saveStatus==="saving" ? "Saving…" : saveStatus==="saved" ? "✓ Saved to Cloud" : saveStatus==="error" ? "✗ Save Failed" : "☁ Save to Cloud"
+        ),
+        // Load from Cloud
+        e("button",{
+          onClick: ()=>loadFromCloud(),
+          style:{width:"100%",padding:"8px",borderRadius:6,border:"1px solid "+C.accent+"40",cursor:"pointer",
+            background: loadStatus==="loaded" ? C.success+"12" : loadStatus==="error" ? C.danger+"12" : C.accent+"08",
+            color: loadStatus==="loaded" ? C.success : loadStatus==="error" ? C.danger : C.accent,
+            fontSize:10,fontWeight:600,fontFamily:"'DM Sans', sans-serif",
+            display:"flex",alignItems:"center",justifyContent:"center",gap:6,transition:"all 0.3s"}
+        },
+          loadStatus==="loading" ? "Loading…" : loadStatus==="loaded" ? "✓ Loaded from Cloud" : loadStatus==="error" ? "✗ Load Failed" : "☁ Load from Cloud"
         ),
         // Export JSON
         e("button",{onClick:()=>{

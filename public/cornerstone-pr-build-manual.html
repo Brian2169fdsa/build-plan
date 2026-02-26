@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cornerstone — Proposal & Resume Drafting | Build Manual</title>
+<title>Cornerstone — Proposal & Resume Drafting | Skillset Manual</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -229,6 +229,7 @@ function App() {
   const [expandedBPItem, setExpandedBPItem] = useState({});
   const [expandedBuildBP, setExpandedBuildBP] = useState({});
   const [expandedBuildBPItem, setExpandedBuildBPItem] = useState({});
+  const [expandedKnowledge, setExpandedKnowledge] = useState(null);
   const [promptOpen, setPromptOpen] = useState(false);
   const [promptCopied, setPromptCopied] = useState(false);
   const [saveStatus, setSaveStatus] = useState(null); // null | 'saving' | 'saved' | 'error'
@@ -636,14 +637,23 @@ function App() {
         )
       )
     ),
+    knowledge: () => e("div",null,
+      e("div",{style:{fontSize:11,fontWeight:600,color:C.textDim,letterSpacing:"0.06em",marginBottom:8,textTransform:"uppercase"}},"KNOWLEDGE"),
+      e("div",{style:{fontSize:10,color:C.textDim,marginBottom:12}},"Knowledge is derived from Training rows. Edit trainings to update knowledge entries."),
+      data.trainingRows.map((row,i) => e("div",{key:i,style:{padding:"8px 10px",borderRadius:6,background:C.bg,border:"1px solid "+C.border,marginBottom:6}},
+        e("div",{style:{fontFamily:mono,fontSize:10,fontWeight:600,color:C.accent}},row.num+" — "+row.name),
+        e("div",{style:{fontSize:10,color:C.textDim,marginTop:2}},row.type+" · "+row.tools)
+      ))
+    ),
   };
 
   const editorTabs = [
-    {id:"overview",label:"Overview",icon:"🏠"},
+    {id:"overview",label:"Skillset Overview",icon:"🏠"},
     {id:"technology",label:"Technology",icon:"⚙️"},
-    {id:"training",label:"Training",icon:"📋"},
-    {id:"workflows",label:"Workflows",icon:"📊"},
-    {id:"configuration",label:"Config",icon:"🧠"},
+    {id:"training",label:"Trainings",icon:"📋"},
+    {id:"workflows",label:"Workflow",icon:"📊"},
+    {id:"knowledge",label:"Knowledge",icon:"📖"},
+    {id:"configuration",label:"Instructions",icon:"🧠"},
     {id:"control",label:"Control",icon:"🛡️"},
     {id:"bestpractices",label:"Best Practices",icon:"✅"},
   ];
@@ -671,7 +681,7 @@ function App() {
         e("div",{style:{display:"flex",gap:3,flexWrap:"wrap"}},
           editorTabs.map(t => {
             const isA = editSection === t.id;
-            return e("button",{key:t.id,onClick:()=>{setEditSection(t.id);setActiveView(t.id==="bestpractices"?"bestpractices":t.id==="training"?"training":t.id==="workflows"?"workflows":t.id==="configuration"?"configuration":t.id==="control"?"control":t.id);},
+            return e("button",{key:t.id,onClick:()=>{setEditSection(t.id);setActiveView(t.id);},
               style:{padding:"5px 8px",borderRadius:5,border:"1px solid "+(isA?C.accent:C.border),background:isA?C.accentDim:C.bg,color:isA?C.accent:C.textDim,fontSize:10,fontWeight:500,cursor:"pointer",fontFamily:"'DM Sans', sans-serif",display:"flex",alignItems:"center",gap:4,transition:"all 0.2s"}},
               e("span",{style:{fontSize:11}},t.icon),t.label
             );
@@ -726,10 +736,10 @@ function App() {
 
   // ============ NAV ============
   const views = [
-    {id:"overview",label:"Overview"},{id:"technology",label:"Technology"},
-    {id:"training",label:"Training Overview"},{id:"workflows",label:"Workflows"},
-    {id:"configuration",label:"Configuration"},{id:"control",label:"Control"},
-    {id:"bestpractices",label:"Best Practices"},
+    {id:"overview",label:"Skillset Overview"},{id:"technology",label:"Technology"},
+    {id:"training",label:"Trainings"},{id:"workflows",label:"Workflow"},
+    {id:"knowledge",label:"Knowledge"},{id:"configuration",label:"Instructions"},
+    {id:"control",label:"Control"},{id:"bestpractices",label:"Best Practices"},
   ];
 
   function navBtn(v) {
@@ -741,7 +751,7 @@ function App() {
   function overviewView() {
     return e("div",{style:{animation:"slideIn 0.5s ease"}},
       e("div",{style:{marginBottom:28}},
-        e("h2",{style:{fontSize:22,fontWeight:600,margin:"0 0 6px"}},`Proposal & Resume Drafting — System Overview`),
+        e("h2",{style:{fontSize:22,fontWeight:600,margin:"0 0 6px"}},"Proposal & Resume Drafting"),
         e("p",{style:{fontSize:13,color:C.textDim,margin:0,maxWidth:720,lineHeight:1.6}},"AI-assisted proposal generation for construction RFPs. Extracts compliance requirements, retrieves reusable content from Cornerstone's existing SharePoint, drafts section blocks with source transparency, and packages deliverables with human-in-the-loop at every gate.")
       ),
       e("div",{style:{padding:24,borderRadius:12,background:C.surface,border:"1px solid "+C.border,marginBottom:20}},
@@ -753,6 +763,30 @@ function App() {
                 e("div",{style:{fontSize:18,marginBottom:3}},item.icon),
                 e("div",{style:{fontSize:10,fontWeight:600,fontFamily:mono,color:item.clr===C.border?C.textMid:item.clr}},item.label),
                 e("div",{style:{fontSize:8,color:C.textDim,marginTop:1}},item.sub))
+          )
+        )
+      ),
+      // Triggers / Inputs / Outputs cards
+      e("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(280px, 1fr))",gap:14,marginBottom:20}},
+        e("div",{style:{padding:20,borderRadius:12,background:C.surface,border:"1px solid "+C.border}},
+          e("div",{style:{fontSize:11,fontWeight:700,color:C.accent,letterSpacing:"0.06em",marginBottom:12,textTransform:"uppercase"}},"Triggers"),
+          e("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+            ["New folder created in /Pursuits/ (workspace setup)","New file uploaded to /01_Pursuit Intake/ (file normalization)","KICKOFF_START.txt created in /04_Review Approvals/","KICKOFF_APPROVED.txt created (content drafting gate)","Reviewer_Edits_v1.json uploaded to /02_Working Drafts/","DRAFT_APPROVED.txt created (final assembly)"].map((item,i)=>
+              e("div",{key:i,style:{display:"flex",alignItems:"flex-start",gap:8,fontSize:11,color:C.textMid,lineHeight:1.5}},e("span",{style:{color:C.accent,flexShrink:0,fontWeight:700,marginTop:1}},"•"),item))
+          )
+        ),
+        e("div",{style:{padding:20,borderRadius:12,background:C.surface,border:"1px solid "+C.border}},
+          e("div",{style:{fontSize:11,fontWeight:700,color:C.purple,letterSpacing:"0.06em",marginBottom:12,textTransform:"uppercase"}},"Inputs"),
+          e("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+            ["RFP PDFs base64-encoded for Claude document blocks","Boilerplate narratives from PR_BOILERPLATE_PATH","Past proposals from PR_PAST_PROPOSALS_PATH","Project sheets and staff resumes from SharePoint","PR_CORE_V1 system prompt (7 rules)","Kickoff Pack + Content Pack JSON schemas"].map((item,i)=>
+              e("div",{key:i,style:{display:"flex",alignItems:"flex-start",gap:8,fontSize:11,color:C.textMid,lineHeight:1.5}},e("span",{style:{color:C.purple,flexShrink:0,fontWeight:700,marginTop:1}},"•"),item))
+          )
+        ),
+        e("div",{style:{padding:20,borderRadius:12,background:C.surface,border:"1px solid "+C.border}},
+          e("div",{style:{fontSize:11,fontWeight:700,color:C.success,letterSpacing:"0.06em",marginBottom:12,textTransform:"uppercase"}},"Outputs"),
+          e("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+            ["Standardized pursuit workspace subfolder structure","Kickoff_Pack_v1.json + DOCX with compliance mapping","Proposal_Content_Pack_v1.docx with source citations","ChangeLog JSON tracking revisions with compliance impact","Final approved outputs archived to /03_Outputs/Final/"].map((item,i)=>
+              e("div",{key:i,style:{display:"flex",alignItems:"flex-start",gap:8,fontSize:11,color:C.textMid,lineHeight:1.5}},e("span",{style:{color:C.success,flexShrink:0,fontWeight:700,marginTop:1}},"•"),item))
           )
         )
       ),
@@ -830,8 +864,16 @@ function App() {
     const typeColors = {Workflow:C.accent,Knowledge:C.purple,Instructions:C.teal};
     return e("div",{style:{animation:"slideIn 0.5s ease"}},
       e("div",{style:{marginBottom:28}},
-        e("h2",{style:{fontSize:22,fontWeight:600,margin:"0 0 6px"}},"Training Overview"),
+        e("h2",{style:{fontSize:22,fontWeight:600,margin:"0 0 6px"}},"Skillset Configuration"),
         e("p",{style:{fontSize:13,color:C.textDim,margin:0,maxWidth:720,lineHeight:1.6}},"Complete training matrix. Each row defines what triggers the training, what goes in, and what comes out.")
+      ),
+      // Skill card
+      e("div",{style:{padding:"16px 20px",borderRadius:12,background:C.surface,border:"1px solid "+C.border,marginBottom:20,display:"flex",alignItems:"center",gap:14}},
+        e("div",{style:{width:44,height:44,borderRadius:10,background:C.accent+"12",border:"1px solid "+C.accent+"25",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}},"✏️"),
+        e("div",null,
+          e("div",{style:{fontSize:14,fontWeight:600,marginBottom:2}},"Proposal & Resume Drafting"),
+          e("div",{style:{fontSize:12,color:C.textDim,lineHeight:1.5}},"Generating compliant proposals and matching resumes for construction RFPs in Cornerstone's voice.")
+        )
       ),
       e("div",{style:{display:"flex",gap:12,marginBottom:20,flexWrap:"wrap"}},
         Object.entries(typeColors).map(([type,color])=>e("div",{key:type,style:{display:"flex",alignItems:"center",gap:6,padding:"5px 12px",borderRadius:6,background:color+"0D",border:"1px solid "+color+"30"}},e("div",{style:{width:8,height:8,borderRadius:"50%",background:color}}),e("span",{style:{fontSize:11,fontWeight:600,color:color}},type)))
@@ -863,7 +905,7 @@ function App() {
   function workflowsView() {
     return e("div",{style:{animation:"slideIn 0.5s ease"}},
       e("div",{style:{marginBottom:28}},
-        e("h2",{style:{fontSize:22,fontWeight:600,margin:"0 0 6px"}},"Workflow Pipeline"),
+        e("h2",{style:{fontSize:22,fontWeight:600,margin:"0 0 6px"}},"Workflow Configuration"),
         e("p",{style:{fontSize:13,color:C.textDim,margin:0,maxWidth:720}},"Seven Make.com workflows. Each card shows the full module sequence, trigger, and DOCX template where applicable.")
       ),
       e("div",{style:{display:"flex",flexDirection:"column",gap:10}},
@@ -915,7 +957,7 @@ function App() {
   function configurationView() {
     return e("div",{style:{animation:"slideIn 0.5s ease"}},
       e("div",{style:{marginBottom:28}},
-        e("h2",{style:{fontSize:22,fontWeight:600,margin:"0 0 6px"}},"Configuration"),
+        e("h2",{style:{fontSize:22,fontWeight:600,margin:"0 0 6px"}},"Instruction Detail"),
         e("p",{style:{fontSize:13,color:C.textDim,margin:0,maxWidth:720}},"Everything Claude. Model selection, HTTP call settings, system prompt rules, the full prompt text, conditional logic per workflow, and all JSON schemas.")
       ),
       e("div",{style:{padding:20,borderRadius:12,background:C.surface,border:"1px solid "+C.border,marginBottom:16}},
@@ -1134,7 +1176,52 @@ function App() {
     );
   }
 
-  const viewMap={overview:overviewView,technology:technologyView,training:trainingView,workflows:workflowsView,configuration:configurationView,control:controlView,bestpractices:bestPracticesView};
+  function knowledgeView() {
+    return e("div",{style:{animation:"slideIn 0.5s ease"}},
+      e("div",{style:{marginBottom:28}},
+        e("h2",{style:{fontSize:22,fontWeight:600,margin:"0 0 6px"}},"Knowledge Configuration"),
+        e("p",{style:{fontSize:13,color:C.textDim,margin:0,maxWidth:720,lineHeight:1.6}},"Detailed view of each skill training. Click any training to expand its full specification — triggers, inputs, outputs, tools, and implementation notes.")
+      ),
+      e("div",{style:{display:"flex",flexDirection:"column",gap:10}},
+        data.trainingRows.map((row,ri) => {
+          const isExp = expandedKnowledge === ri;
+          const typeColors = {Workflow:C.accent,Knowledge:C.purple,Instructions:C.teal};
+          const tc = typeColors[row.type] || C.accent;
+          return e("div",{key:ri},
+            e("div",{onClick:()=>setExpandedKnowledge(isExp?null:ri),style:{padding:"16px 20px",borderRadius:12,cursor:"pointer",background:isExp?tc+"06":C.surface,border:"1px solid "+(isExp?tc+"44":C.border),transition:"all 0.3s ease"}},
+              e("div",{style:{display:"flex",alignItems:"center",gap:12}},
+                e("div",{style:{width:36,height:36,borderRadius:8,background:tc+"14",border:"1px solid "+tc+"30",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:mono,fontSize:14,fontWeight:700,color:tc,flexShrink:0}},row.num),
+                e("div",{style:{flex:1}},
+                  e("div",{style:{fontSize:14,fontWeight:600,marginBottom:2}},row.name),
+                  e("div",{style:{display:"flex",gap:6,alignItems:"center"}},
+                    e("span",{style:{fontSize:10,padding:"2px 8px",borderRadius:4,background:tc+"12",color:tc,fontWeight:600,border:"1px solid "+tc+"25"}},row.type),
+                    e("span",{style:{fontSize:10,color:C.textDim}},row.tools)
+                  )
+                ),
+                e("div",{style:{fontSize:12,color:C.textDim,flexShrink:0}},isExp?"▲":"▼")
+              )
+            ),
+            isExp?e("div",{style:{margin:"6px 0",padding:20,borderRadius:10,background:C.bg,border:"1px solid "+C.border,animation:"slideIn 0.3s ease"}},
+              e("div",{style:{marginBottom:16}},
+                e("div",{style:{fontSize:10,fontWeight:700,color:C.warning,letterSpacing:"0.06em",marginBottom:6,textTransform:"uppercase"}},"Trigger"),
+                e("div",{style:{padding:"8px 12px",borderRadius:6,background:C.warning+"08",border:"1px solid "+C.warning+"20",fontFamily:mono,fontSize:11,color:C.textMid,lineHeight:1.5}},row.trigger)
+              ),
+              e("div",{style:{marginBottom:16}},
+                e("div",{style:{fontSize:10,fontWeight:700,color:C.accent,letterSpacing:"0.06em",marginBottom:6,textTransform:"uppercase"}},"Inputs"),
+                e("div",{style:{padding:"10px 14px",borderRadius:6,background:C.accent+"06",border:"1px solid "+C.accent+"15",fontSize:11,color:C.textMid,lineHeight:1.7}},row.inputs)
+              ),
+              e("div",{style:{marginBottom:0}},
+                e("div",{style:{fontSize:10,fontWeight:700,color:C.success,letterSpacing:"0.06em",marginBottom:6,textTransform:"uppercase"}},"Outputs"),
+                e("div",{style:{padding:"10px 14px",borderRadius:6,background:C.success+"06",border:"1px solid "+C.success+"15",fontSize:11,color:C.text,lineHeight:1.7}},row.outputs)
+              )
+            ):null
+          );
+        })
+      )
+    );
+  }
+
+  const viewMap={overview:overviewView,technology:technologyView,training:trainingView,workflows:workflowsView,configuration:configurationView,control:controlView,bestpractices:bestPracticesView,knowledge:knowledgeView};
   const content=(viewMap[activeView]||overviewView)();
 
   return e("div",{style:{display:"flex",minHeight:"100vh"}},
@@ -1153,7 +1240,7 @@ function App() {
             e("div",{style:{width:1,height:20,background:C.border}}),
             e("div",null,
               e("div",{style:{fontSize:12,fontWeight:600}},data.clientName+" — "+data.solutionName),
-              e("div",{style:{fontSize:9,color:C.textDim,marginTop:1,fontFamily:mono}},"Build Manual v"+data.version+" · "+data.stack)
+              e("div",{style:{fontSize:9,color:C.textDim,marginTop:1,fontFamily:mono}},"Skillset Manual v"+data.version+" · "+data.stack)
             )
           ),
           e("div",{style:{display:"flex",gap:2,background:C.surface2,borderRadius:8,padding:3,border:"1px solid "+C.border,flexWrap:"wrap"}},views.map(v=>navBtn(v)))
@@ -1161,7 +1248,7 @@ function App() {
       ),
       e("main",{style:{position:"relative",zIndex:5,padding:"30px 28px",maxWidth:1400,margin:"0 auto"}},content),
       e("footer",{style:{position:"relative",zIndex:5,padding:"16px 28px",borderTop:"1px solid "+C.border,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}},
-        e("div",{style:{fontSize:11,color:C.textDim}},e("span",{style:{color:C.logo}},"MANAGE"),e("span",{style:{color:C.accent}},"AI"),e("span",{style:{marginLeft:8}},"· "+data.solutionName+" Build Manual v"+data.version+" · February 2026")),
+        e("div",{style:{fontSize:11,color:C.textDim}},e("span",{style:{color:C.logo}},"MANAGE"),e("span",{style:{color:C.accent}},"AI"),e("span",{style:{marginLeft:8}},"· "+data.solutionName+" Skillset Manual v"+data.version+" · February 2026")),
         e("div",{style:{fontSize:10,color:C.textDim,fontFamily:mono}},"CONFIDENTIAL — "+data.confidentialLine)
       )
     )
